@@ -44,6 +44,7 @@ async function initDB() {
     });
     console.log('Connected to Azure SQL');
     await ensureTables();
+    await migrateSchema();
     return true;
   } catch (e) {
     console.log('DB not available, running in memory mode:', e.message);
@@ -191,6 +192,31 @@ async function ensureTables() {
     console.log('Vybe tables ready');
   } catch (e) {
     console.error('Table creation error:', e.message);
+  }
+}
+
+// ── Schema migration: add UserStoryId to existing tables that still use AreaId ──
+async function migrateSchema() {
+  try {
+    const tables = ['Vybe_Tasks', 'Vybe_Bugs', 'Vybe_TestCases'];
+    for (const tbl of tables) {
+      // Check if AreaId exists but UserStoryId doesn't
+      const colCheck = await dbPool.request().query(`
+        SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = '${tbl}' AND COLUMN_NAME IN ('AreaId','UserStoryId')
+      `);
+      const cols = colCheck.recordset.map(r => r.COLUMN_NAME);
+      if (cols.includes('AreaId') && !cols.includes('UserStoryId')) {
+        console.log(`Migrating ${tbl}: renaming AreaId -> UserStoryId`);
+        await dbPool.request().query(`EXEC sp_rename '${tbl}.AreaId', 'UserStoryId', 'COLUMN'`);
+      } else if (!cols.includes('UserStoryId') && !cols.includes('AreaId')) {
+        console.log(`Migrating ${tbl}: adding UserStoryId column`);
+        await dbPool.request().query(`ALTER TABLE ${tbl} ADD UserStoryId UNIQUEIDENTIFIER NULL`);
+      }
+    }
+    console.log('Schema migration complete');
+  } catch (e) {
+    console.error('Migration error:', e.message);
   }
 }
 
