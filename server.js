@@ -516,6 +516,22 @@ async function handleRequest(req, res) {
   // ── WORK ITEMS (Bugs, Tasks, TestCases) — now tied to UserStoryId ──
   // ══════════════════════════════════════
 
+  // GET /api/items?epicId=X — all items across all stories for a project
+  if (pathname === '/api/items' && req.method === 'GET') {
+    const epicId = url.searchParams.get('epicId');
+    if (!epicId) return sendJSON(res, 400, { error: 'epicId required' });
+    const epicStories = stories.filter(s => String(s.EpicId) === epicId);
+    const storyMap = {};
+    epicStories.forEach(s => { storyMap[String(s.Id)] = s.Title; });
+    const storyIds = new Set(epicStories.map(s => String(s.Id)));
+    const items = [
+      ...bugs.filter(b => storyIds.has(String(b.UserStoryId))).map(b => ({ ...b, _type: 'bug', _storyTitle: storyMap[String(b.UserStoryId)] || '' })),
+      ...tasks.filter(t => storyIds.has(String(t.UserStoryId))).map(t => ({ ...t, _type: 'task', _storyTitle: storyMap[String(t.UserStoryId)] || '' })),
+      ...testcases.filter(tc => storyIds.has(String(tc.UserStoryId))).map(tc => ({ ...tc, _type: 'testcase', _storyTitle: storyMap[String(tc.UserStoryId)] || '' })),
+    ];
+    return sendJSON(res, 200, { items });
+  }
+
   // POST /api/items — universal item creator
   if (pathname === '/api/items' && req.method === 'POST') {
     const user = await getUserFromSession(req);

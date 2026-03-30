@@ -11,6 +11,7 @@
   --text-secondary: #666; --text-muted: #999; --accent: #0078d4; --accent-light: #e8f4fd;
   --danger: #d32f2f; --success: #2e7d32; --warning: #f57c00; --purple: #7b1fa2;
   --sidebar-bg: #fafafa; --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --col-bg: #f0f0f0;
 }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
@@ -44,11 +45,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .story-item .story-status.open { background:#e8f4fd; color:var(--accent); }
 .story-item .story-status.in-progress { background:#fff3e0; color:var(--warning); }
 .story-item .story-status.done { background:#e8f5e9; color:var(--success); }
+.sidebar .filter-note { padding:4px 16px 8px; font-size:10px; color:var(--accent); font-weight:500; display:flex; align-items:center; gap:4px; cursor:pointer; }
+.sidebar .filter-note:hover { text-decoration:underline; }
 .sidebar-footer { border-top:1px solid var(--border); padding:8px; }
 .sidebar-footer .nav-item { display:flex; align-items:center; gap:8px; padding:6px 12px; font-size:13px; color:var(--text-secondary); cursor:pointer; border-radius:4px; }
 .sidebar-footer .nav-item:hover { background:var(--border); color:var(--text); }
 
-/* ── Main Content ── */
+/* ── Main Content / Kanban ── */
 .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .main-toolbar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; }
 .main-toolbar h2 { font-size:15px; font-weight:600; flex:1; }
@@ -59,47 +62,59 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-ghost:hover { background:var(--bg); }
 .btn-sm { padding:3px 8px; font-size:11px; }
 .btn-danger { background:var(--danger); color:white; }
+.btn-triage { background:#0078d4; color:white; font-size:10px; padding:2px 8px; border:none; border-radius:3px; cursor:pointer; font-weight:600; }
+.btn-triage:hover { background:#006abc; }
 
-/* ── Item List ── */
-.item-list { flex:1; overflow-y:auto; padding:12px 16px; }
-.item-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:6px; cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; }
-.item-row:hover { box-shadow:var(--card-shadow); }
-.item-row.type-bug { border-left-color:var(--danger); }
-.item-row.type-task { border-left-color:var(--accent); }
-.item-row.type-testcase { border-left-color:var(--success); }
-.item-row .type-badge { font-size:9px; font-weight:700; text-transform:uppercase; padding:2px 6px; border-radius:3px; color:white; flex-shrink:0; }
+/* ── Kanban Board ── */
+.kanban-board { display:flex; flex:1; overflow-x:auto; padding:12px; gap:10px; }
+.kanban-col { min-width:220px; width:220px; flex-shrink:0; display:flex; flex-direction:column; background:var(--col-bg); border-radius:8px; max-height:100%; }
+.kanban-col-header { padding:10px 12px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px; border-radius:8px 8px 0 0; flex-shrink:0; }
+.kanban-col-header .col-count { font-size:10px; font-weight:500; color:var(--text-muted); background:var(--surface); padding:1px 6px; border-radius:8px; }
+.kanban-col[data-status="draft"] .kanban-col-header { color:#757575; border-bottom:2px solid #9e9e9e; }
+.kanban-col[data-status="triaged"] .kanban-col-header { color:var(--accent); border-bottom:2px solid var(--accent); }
+.kanban-col[data-status="ai-in-progress"] .kanban-col-header { color:var(--warning); border-bottom:2px solid var(--warning); }
+.kanban-col[data-status="ai-done"] .kanban-col-header { color:var(--success); border-bottom:2px solid var(--success); }
+.kanban-col[data-status="closed"] .kanban-col-header { color:#555; border-bottom:2px solid #555; }
+.kanban-col-body { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:6px; }
+
+/* ── Kanban Cards ── */
+.kanban-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px; cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; position:relative; }
+.kanban-card:hover { box-shadow:0 2px 8px rgba(0,0,0,0.1); transform:translateY(-1px); }
+.kanban-card.priority-P0 { border-left-color:var(--danger); }
+.kanban-card.priority-P1 { border-left-color:var(--warning); }
+.kanban-card.priority-P2 { border-left-color:var(--accent); }
+.kanban-card.priority-P3 { border-left-color:#bbb; }
+.kanban-card .card-top { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.kanban-card .type-badge { font-size:8px; font-weight:700; text-transform:uppercase; padding:1px 5px; border-radius:3px; color:white; flex-shrink:0; }
 .type-badge.bug { background:var(--danger); }
 .type-badge.task { background:var(--accent); }
 .type-badge.testcase { background:var(--success); }
-.item-row .item-title { font-size:13px; font-weight:500; flex:1; }
-.item-row .priority { font-size:10px; font-weight:700; padding:1px 5px; border-radius:2px; }
-.priority.P0 { background:#ffebee; color:var(--danger); }
-.priority.P1 { background:#fff3e0; color:var(--warning); }
-.priority.P2 { background:#e8f4fd; color:var(--accent); }
-.priority.P3 { background:var(--bg); color:var(--text-muted); }
-.status-chip { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; color:white; white-space:nowrap; }
-.status-chip.draft { background:#9e9e9e; }
-.status-chip.triaged { background:var(--accent); }
-.status-chip.ai-in-progress { background:var(--warning); }
-.status-chip.ai-done { background:var(--success); }
-.status-chip.closed { background:#4a4a4a; }
-.status-chip.blocked { background:var(--danger); }
-.status-chip.pass { background:var(--success); }
-.status-chip.fail { background:var(--danger); }
-.agent-indicator { display:flex; align-items:center; gap:3px; color:var(--purple); font-size:11px; font-weight:500; }
-.agent-dot { width:6px; height:6px; border-radius:50%; background:var(--purple); animation:pulse 1.5s infinite; }
+.kanban-card .card-priority { font-size:9px; font-weight:700; padding:1px 4px; border-radius:2px; margin-left:auto; }
+.card-priority.P0 { background:#ffebee; color:var(--danger); }
+.card-priority.P1 { background:#fff3e0; color:var(--warning); }
+.card-priority.P2 { background:#e8f4fd; color:var(--accent); }
+.card-priority.P3 { background:var(--bg); color:var(--text-muted); }
+.kanban-card .card-title { font-size:13px; font-weight:500; line-height:1.3; margin-bottom:6px; }
+.kanban-card .card-story { font-size:10px; color:var(--text-muted); display:flex; align-items:center; gap:4px; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kanban-card .card-story-icon { font-size:11px; }
+.kanban-card .card-footer { display:flex; align-items:center; justify-content:space-between; }
+.kanban-card .agent-indicator { display:flex; align-items:center; gap:3px; color:var(--purple); font-size:10px; font-weight:500; }
+.agent-dot { width:5px; height:5px; border-radius:50%; background:var(--purple); animation:pulse 1.5s infinite; }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* ── Card Expanded ── */
+.kanban-card .card-expanded { display:none; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+.kanban-card.expanded .card-expanded { display:block; }
+.kanban-card .card-spec { font-size:11px; color:var(--text-secondary); font-family:'Menlo','Consolas',monospace; background:var(--bg); padding:6px 8px; border-radius:4px; white-space:pre-wrap; max-height:150px; overflow-y:auto; margin-bottom:6px; border:1px solid var(--border); }
+.kanban-card .card-field { font-size:11px; color:var(--text-muted); margin-bottom:3px; }
+.kanban-card .card-field strong { color:var(--text-secondary); }
+.kanban-card .card-actions { display:flex; gap:6px; margin-top:6px; }
 
 /* ── Empty / Welcome ── */
 .empty-state { padding:60px 40px; text-align:center; color:var(--text-muted); }
 .empty-state h3 { font-size:16px; color:var(--text-secondary); margin-bottom:8px; }
 .empty-state p { font-size:13px; margin-bottom:16px; }
-
-/* ── Story Detail Header ── */
-.story-header { padding:16px; background:var(--surface); border-bottom:1px solid var(--border); }
-.story-header h2 { font-size:16px; margin-bottom:4px; }
-.story-header .story-desc { font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
-.story-header .story-ac { font-size:12px; color:var(--text-muted); background:var(--bg); padding:8px 12px; border-radius:4px; white-space:pre-wrap; }
+.col-empty { padding:12px; text-align:center; font-size:11px; color:var(--text-muted); }
 
 /* ── Detail Panel ── */
 .detail-overlay { position:fixed; top:0; right:0; bottom:0; left:0; background:rgba(0,0,0,0.2); display:none; z-index:100; }
@@ -114,6 +129,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .detail-body .field-value { font-size:14px; }
 .detail-body .field-value.mono { font-family:'Menlo','Consolas',monospace; font-size:12px; background:var(--bg); padding:10px; border-radius:4px; white-space:pre-wrap; border:1px solid var(--border); max-height:300px; overflow-y:auto; }
 .detail-actions { padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; }
+
+/* ── Status Chips ── */
+.status-chip { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; color:white; white-space:nowrap; }
+.status-chip.draft { background:#9e9e9e; }
+.status-chip.triaged { background:var(--accent); }
+.status-chip.ai-in-progress { background:var(--warning); }
+.status-chip.ai-done { background:var(--success); }
+.status-chip.closed { background:#4a4a4a; }
+.status-chip.blocked { background:var(--danger); }
+.status-chip.pass { background:var(--success); }
+.status-chip.fail { background:var(--danger); }
 
 /* ── Modals ── */
 .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:200; }
@@ -150,6 +176,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <span class="section-title">User Stories</span>
       <button class="add-btn" onclick="showCreateStory()" title="New Story">+</button>
     </div>
+    <div id="filterNote" class="filter-note" style="display:none" onclick="clearStoryFilter()"></div>
     <div class="story-list" id="storyList">
       <div class="empty-state" style="padding:20px"><p>Select a project to see stories</p></div>
     </div>
@@ -159,12 +186,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     </div>
   </div>
 
-  <!-- Main: Items for selected story -->
+  <!-- Main: Kanban Board -->
   <div class="main">
     <div id="mainContent">
       <div class="empty-state">
         <h3>Welcome to Vybe PM</h3>
-        <p>Select a project and user story to view work items</p>
+        <p>Select a project to view the board</p>
       </div>
     </div>
   </div>
@@ -252,9 +279,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 let currentUser = null;
 let allEpics = [];
 let allStories = [];
-let currentItems = [];
+let allItems = [];       // ALL items for the project
 let selectedEpicId = '';
-let selectedStoryId = '';
+let selectedStoryId = '';  // used for filtering the board
+let expandedCards = new Set();
 
 // ── API ──
 async function api(url, opts = {}) {
@@ -288,14 +316,14 @@ async function loadEpics() {
   const sel = document.getElementById('epicSelect');
   sel.innerHTML = '<option value="">Select Project</option>';
   allEpics.forEach(e => { sel.innerHTML += `<option value="${e.Id}" ${String(e.Id)===selectedEpicId?'selected':''}>${esc(e.Name)}</option>`; });
-  if (selectedEpicId) loadStories();
+  if (selectedEpicId) { loadStories(); loadAllItems(); }
 }
 
 function switchEpic(id) {
   selectedEpicId = id;
   selectedStoryId = '';
-  if (id) loadStories();
-  else { allStories = []; renderStories(); renderMain(); }
+  if (id) { loadStories(); loadAllItems(); }
+  else { allStories = []; allItems = []; renderStories(); renderBoard(); }
 }
 
 async function loadStories() {
@@ -303,15 +331,29 @@ async function loadStories() {
   const data = await api(`/api/stories?epicId=${selectedEpicId}`);
   allStories = data?.stories || [];
   renderStories();
-  if (selectedStoryId) loadStoryItems(selectedStoryId);
-  else renderMain();
+}
+
+async function loadAllItems() {
+  if (!selectedEpicId) return;
+  const data = await api(`/api/items?epicId=${selectedEpicId}`);
+  allItems = data?.items || [];
+  renderBoard();
 }
 
 function renderStories() {
   const list = document.getElementById('storyList');
+  const filterNote = document.getElementById('filterNote');
   if (!allStories.length) {
     list.innerHTML = '<div class="empty-state" style="padding:20px"><p>No stories yet. Click + to create one.</p></div>';
+    filterNote.style.display = 'none';
     return;
+  }
+  if (selectedStoryId) {
+    const s = allStories.find(s => String(s.Id) === selectedStoryId);
+    filterNote.style.display = '';
+    filterNote.innerHTML = `&#x2715; Filtering: ${esc(s?.Title || 'story')}`;
+  } else {
+    filterNote.style.display = 'none';
   }
   list.innerHTML = allStories.map(s => {
     const pct = s._totalItems > 0 ? Math.round((s._doneItems / s._totalItems) * 100) : 0;
@@ -323,7 +365,7 @@ function renderStories() {
           <span class="story-status ${statusClass}">${statusClass}</span>
           <span>${s._doneItems}/${s._totalItems}</span>
           <div class="story-progress"><div class="story-progress-bar" style="width:${pct}%"></div></div>
-          <span class="priority ${s.Priority||'P2'}" style="font-size:10px;font-weight:700">${s.Priority||'P2'}</span>
+          <span style="font-size:10px;font-weight:700" class="${s.Priority||'P2'}">${s.Priority||'P2'}</span>
         </div>
       </div>
     `;
@@ -331,72 +373,129 @@ function renderStories() {
 }
 
 function selectStory(id) {
-  selectedStoryId = id;
+  // Toggle: click same story again to clear filter
+  if (selectedStoryId === id) {
+    selectedStoryId = '';
+  } else {
+    selectedStoryId = id;
+  }
   renderStories();
-  loadStoryItems(id);
+  renderBoard();
 }
 
-async function loadStoryItems(storyId) {
-  const data = await api(`/api/stories/${storyId}`);
-  if (!data) return;
-  currentItems = data.items || [];
-  renderMain(data.story);
+function clearStoryFilter() {
+  selectedStoryId = '';
+  renderStories();
+  renderBoard();
 }
 
-function renderMain(story) {
+// ── Kanban Board ──
+const COLUMNS = [
+  { key: 'draft', label: 'Draft', statuses: ['draft'] },
+  { key: 'triaged', label: 'Triaged', statuses: ['triaged'] },
+  { key: 'ai-in-progress', label: 'AI Working', statuses: ['ai-in-progress', 'blocked'] },
+  { key: 'ai-done', label: 'AI Done', statuses: ['ai-done', 'pass'] },
+  { key: 'closed', label: 'Closed', statuses: ['closed', 'fail'] },
+];
+
+function renderBoard() {
   const main = document.getElementById('mainContent');
   if (!selectedEpicId) {
-    main.innerHTML = '<div class="empty-state"><h3>Welcome to Vybe PM</h3><p>Select a project to get started</p></div>';
+    main.innerHTML = '<div class="empty-state"><h3>Welcome to Vybe PM</h3><p>Select a project to view the board</p></div>';
     return;
   }
-  if (!selectedStoryId || !story) {
-    main.innerHTML = `<div class="empty-state"><h3>Select a User Story</h3><p>Choose a story from the sidebar to view its items, or create a new one</p>
-      <button class="btn btn-primary" onclick="showCreateItem()" style="width:auto;margin-top:8px">+ New Item</button></div>`;
-    return;
+
+  // Filter items by story if one is selected
+  let items = allItems;
+  if (selectedStoryId) {
+    items = allItems.filter(i => String(i.UserStoryId) === selectedStoryId);
   }
-  const acHtml = story.AcceptanceCriteria ? `<div class="story-ac">${esc(story.AcceptanceCriteria)}</div>` : '';
-  const descHtml = story.Description ? `<div class="story-desc">${esc(story.Description)}</div>` : '';
+
+  const draftCount = items.filter(i => i.Status === 'draft').length;
   let html = `
-    <div class="story-header">
-      <h2>${esc(story.Title)}</h2>
-      ${descHtml}
-      ${acHtml}
-    </div>
     <div class="main-toolbar">
-      <h2 style="font-size:13px;color:var(--text-secondary)">${currentItems.length} item${currentItems.length!==1?'s':''}</h2>
-      <button class="btn btn-ghost btn-sm" onclick="triageAllDraft()">Triage All Draft</button>
+      <h2 style="font-size:13px;color:var(--text-secondary)">${items.length} item${items.length!==1?'s':''}${selectedStoryId?' (filtered)':''}</h2>
+      ${draftCount > 0 ? `<button class="btn btn-ghost btn-sm" onclick="triageAllDraft()">Triage All Draft (${draftCount})</button>` : ''}
       <button class="btn btn-primary btn-sm" onclick="showCreateItem()">+ New Item</button>
     </div>
-    <div class="item-list">
+    <div class="kanban-board">
   `;
-  if (!currentItems.length) {
-    html += '<div class="empty-state" style="padding:30px"><p>No items yet. Create tasks, bugs, or test cases for this story.</p></div>';
-  } else {
-    // Sort: draft first, then triaged, then in-progress, then done, then closed
-    const order = { draft:0, triaged:1, 'ai-in-progress':2, blocked:2, 'ai-done':3, pass:4, fail:4, closed:5 };
-    const sorted = [...currentItems].sort((a,b) => (order[a.Status]||9) - (order[b.Status]||9));
-    sorted.forEach(item => {
-      const type = item._type || 'task';
-      const status = item.Status || 'draft';
-      const isWorking = status === 'ai-in-progress';
-      html += `
-        <div class="item-row type-${type}" onclick="openDetail('${item.Id}','${type}')">
-          <span class="type-badge ${type}">${type==='testcase'?'TC':type==='bug'?'BUG':'TASK'}</span>
-          <span class="item-title">${esc(item.Title)}</span>
-          <span class="priority ${item.Priority||'P2'}">${item.Priority||'P2'}</span>
-          ${isWorking?'<span class="agent-indicator"><span class="agent-dot"></span>claude</span>':''}
-          <span class="status-chip ${status}">${status}</span>
+
+  COLUMNS.forEach(col => {
+    const colItems = items.filter(i => col.statuses.includes(i.Status));
+    html += `
+      <div class="kanban-col" data-status="${col.key}">
+        <div class="kanban-col-header">
+          ${col.label}
+          <span class="col-count">${colItems.length}</span>
         </div>
-      `;
-    });
-  }
+        <div class="kanban-col-body">
+    `;
+    if (!colItems.length) {
+      html += '<div class="col-empty">No items</div>';
+    } else {
+      // Sort by priority within each column
+      const pOrder = { P0:0, P1:1, P2:2, P3:3 };
+      colItems.sort((a,b) => (pOrder[a.Priority]||9) - (pOrder[b.Priority]||9));
+      colItems.forEach(item => {
+        const type = item._type || 'task';
+        const pri = item.Priority || 'P2';
+        const isExpanded = expandedCards.has(String(item.Id));
+        const isWorking = item.Status === 'ai-in-progress';
+        const isBlocked = item.Status === 'blocked';
+        html += `
+          <div class="kanban-card priority-${pri} ${isExpanded?'expanded':''}" onclick="toggleCard(event,'${item.Id}')">
+            <div class="card-top">
+              <span class="type-badge ${type}">${type==='testcase'?'TC':type==='bug'?'BUG':'TASK'}</span>
+              ${isWorking?'<span class="agent-indicator"><span class="agent-dot"></span>AI</span>':''}
+              ${isBlocked?'<span style="font-size:9px;font-weight:700;color:var(--danger)">BLOCKED</span>':''}
+              <span class="card-priority ${pri}">${pri}</span>
+            </div>
+            <div class="card-title">${esc(item.Title)}</div>
+            <div class="card-story"><span class="card-story-icon">&#128209;</span> ${esc(item._storyTitle || 'Unknown Story')}</div>
+            <div class="card-footer">
+              ${item.Status==='draft'&&currentUser?`<button class="btn-triage" onclick="triageItem(event,'${item.Id}','${type}')">TRIAGE</button>`:'<span></span>'}
+              ${item.Status==='ai-done'&&currentUser?`<button class="btn-triage" onclick="closeItem(event,'${item.Id}','${type}')" style="background:var(--success)">CLOSE</button>`:''}
+              ${isBlocked&&currentUser?`<button class="btn-triage" onclick="unblockItem(event,'${item.Id}','${type}')" style="background:var(--warning)">UNBLOCK</button>`:''}
+            </div>
+            <div class="card-expanded">
+              ${item.Spec?`<div class="card-spec">${esc(item.Spec)}</div>`:'<div class="card-field" style="font-style:italic">No spec provided</div>'}
+              <div class="card-field"><strong>Status:</strong> <span class="status-chip ${item.Status}">${item.Status}</span></div>
+              ${item.AssignedTo?`<div class="card-field"><strong>Assigned:</strong> ${esc(item.AssignedTo)}</div>`:''}
+              ${item.Resolution?`<div class="card-field"><strong>Resolution:</strong></div><div class="card-spec">${esc(item.Resolution)}</div>`:''}
+              ${item.LastResult?`<div class="card-field"><strong>Result:</strong></div><div class="card-spec">${esc(item.LastResult)}</div>`:''}
+              <div class="card-field"><strong>Created:</strong> ${item.CreatedAt?new Date(item.CreatedAt).toLocaleDateString():'-'}</div>
+              <div class="card-actions">
+                <button class="btn btn-ghost btn-sm" onclick="openDetail2(event,'${item.Id}','${type}')">Full Details</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+    html += '</div></div>';
+  });
+
   html += '</div>';
   main.innerHTML = html;
 }
 
+function toggleCard(e, id) {
+  // Don't toggle when clicking buttons
+  if (e.target.tagName === 'BUTTON') return;
+  if (expandedCards.has(id)) expandedCards.delete(id);
+  else expandedCards.add(id);
+  renderBoard();
+}
+
 // ── Detail Panel ──
+function openDetail2(e, id, type) {
+  e.stopPropagation();
+  openDetail(id, type);
+}
+
 function openDetail(id, type) {
-  const item = currentItems.find(i => String(i.Id) === id && i._type === type);
+  const item = allItems.find(i => String(i.Id) === id && i._type === type);
   if (!item) return;
   document.getElementById('detailType').className = `type-badge ${type}`;
   document.getElementById('detailType').textContent = type === 'testcase' ? 'TC' : type.toUpperCase();
@@ -404,7 +503,8 @@ function openDetail(id, type) {
   const status = item.Status || 'draft';
   document.getElementById('detailBody').innerHTML = `
     <div class="field"><div class="field-label">Status</div><div class="field-value"><span class="status-chip ${status}">${status}</span></div></div>
-    <div class="field"><div class="field-label">Priority</div><div class="field-value"><span class="priority ${item.Priority||'P2'}" style="font-size:13px">${item.Priority||'P2'}</span></div></div>
+    <div class="field"><div class="field-label">Priority</div><div class="field-value"><span class="card-priority ${item.Priority||'P2'}" style="font-size:13px;padding:2px 6px">${item.Priority||'P2'}</span></div></div>
+    <div class="field"><div class="field-label">User Story</div><div class="field-value">${esc(item._storyTitle || 'Unknown')}</div></div>
     ${item.AssignedTo ? `<div class="field"><div class="field-label">Assigned To</div><div class="field-value">${esc(item.AssignedTo)}</div></div>` : ''}
     <div class="field"><div class="field-label">Created</div><div class="field-value">${item.CreatedAt ? new Date(item.CreatedAt).toLocaleDateString() : '-'}</div></div>
     ${item.Spec ? `<div class="field"><div class="field-label">Spec</div><div class="field-value mono">${esc(item.Spec)}</div></div>` : ''}
@@ -414,7 +514,7 @@ function openDetail(id, type) {
   const actions = document.getElementById('detailActions');
   actions.innerHTML = '';
   if (currentUser) {
-    if (status === 'draft') actions.innerHTML = `<button class="btn btn-primary" onclick="triageItem('${item.Id}','${type}')">Triage</button>`;
+    if (status === 'draft') actions.innerHTML = `<button class="btn btn-primary" onclick="triageItemFromDetail('${item.Id}','${type}')">Triage</button>`;
     if (status === 'ai-done') actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','closed')">Close</button>`;
     if (status === 'blocked') actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','triaged')">Unblock</button>`;
   }
@@ -423,26 +523,47 @@ function openDetail(id, type) {
 function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
 
 // ── Actions ──
-async function triageItem(id, type) {
+async function triageItem(e, id, type) {
+  e.stopPropagation();
+  await api(`/api/triage/${id}`, { method:'POST', body:{ type } });
+  await refreshBoard();
+}
+
+async function triageItemFromDetail(id, type) {
   await api(`/api/triage/${id}`, { method:'POST', body:{ type } });
   closeDetail();
-  await loadStoryItems(selectedStoryId);
-  await loadStories();
+  await refreshBoard();
+}
+
+async function closeItem(e, id, type) {
+  e.stopPropagation();
+  await api(`/api/items/${id}`, { method:'PUT', body:{ type, status: 'closed' } });
+  await refreshBoard();
+}
+
+async function unblockItem(e, id, type) {
+  e.stopPropagation();
+  await api(`/api/items/${id}`, { method:'PUT', body:{ type, status: 'triaged' } });
+  await refreshBoard();
 }
 
 async function triageAllDraft() {
-  const drafts = currentItems.filter(i => i.Status === 'draft').map(i => ({ id: String(i.Id), type: i._type }));
+  let items = allItems;
+  if (selectedStoryId) items = allItems.filter(i => String(i.UserStoryId) === selectedStoryId);
+  const drafts = items.filter(i => i.Status === 'draft').map(i => ({ id: String(i.Id), type: i._type }));
   if (!drafts.length) return;
   await api('/api/triage/batch', { method:'POST', body:{ items: drafts } });
-  await loadStoryItems(selectedStoryId);
-  await loadStories();
+  await refreshBoard();
 }
 
 async function updateStatus(id, type, newStatus) {
   await api(`/api/items/${id}`, { method:'PUT', body:{ type, status: newStatus } });
   closeDetail();
-  await loadStoryItems(selectedStoryId);
-  await loadStories();
+  await refreshBoard();
+}
+
+async function refreshBoard() {
+  await Promise.all([loadStories(), loadAllItems()]);
 }
 
 // ── Auth ──
@@ -482,7 +603,7 @@ async function submitCreateStory() {
     acceptanceCriteria: document.getElementById('storyAC').value,
     priority: document.getElementById('storyPriority').value
   }});
-  if (data?.story) { document.getElementById('storyModal').style.display='none'; await loadStories(); selectStory(String(data.story.Id)); }
+  if (data?.story) { document.getElementById('storyModal').style.display='none'; await refreshBoard(); }
   else { document.getElementById('storyError').textContent=data?.error||'Failed'; document.getElementById('storyError').style.display=''; }
 }
 
@@ -512,8 +633,7 @@ async function submitCreateItem() {
   }});
   if (data?.item) {
     document.getElementById('itemModal').style.display='none';
-    if (String(userStoryId) === selectedStoryId) await loadStoryItems(selectedStoryId);
-    await loadStories();
+    await refreshBoard();
   } else { document.getElementById('itemError').textContent=data?.error||'Failed'; document.getElementById('itemError').style.display=''; }
 }
 
