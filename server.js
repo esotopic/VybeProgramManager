@@ -156,6 +156,20 @@ async function ensureTables() {
       );
     END
 
+    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vybe_ApiTokens')
+    BEGIN
+      CREATE TABLE Vybe_ApiTokens (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        Token NVARCHAR(128) NOT NULL UNIQUE,
+        DisplayName NVARCHAR(100) NOT NULL,
+        Label NVARCHAR(255),
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        ExpiresAt DATETIME2,
+        Active BIT DEFAULT 1
+      );
+      CREATE INDEX IX_Vybe_ApiTokens_Token ON Vybe_ApiTokens(Token);
+    END
+
     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vybe_AuditLog')
     BEGIN
       CREATE TABLE Vybe_AuditLog (
@@ -225,6 +239,27 @@ function parseCookies(cookieHeader) {
 
 async function getUserFromSession(req) {
   if (!dbPool) return null;
+
+  // 1. Check for API Bearer token first (fast path for programmatic access)
+  const authHeader = req.headers['authorization'] || '';
+  if (authHeader.startsWith('Bearer ')) {
+    const apiToken = authHeader.slice(7).trim();
+    if (apiToken) {
+      try {
+        const result = await dbPool.request()
+          .input('token', sql.NVarChar, apiToken)
+          .query(`SELECT DisplayName FROM Vybe_ApiTokens
+                  WHERE Token = @token AND Active = 1
+                  AND (ExpiresAt IS NULL OR ExpiresAt > GETUTCDATE())`);
+        const row = result.recordset[0];
+        if (row) return { DisplayName: row.DisplayName, Username: row.DisplayName, _api: true };
+      } catch (e) {
+        console.error('API token lookup error:', e.message);
+      }
+    }
+  }
+
+  // 2. Fall back to session cookie
   const cookies = parseCookies(req.headers.cookie);
   const token = cookies['vybe_session'];
   if (!token) return null;
@@ -749,6 +784,115 @@ async function handleRequest(req, res) {
   }
 
   // ══════════════════════════════════════
+  // ── BATCH INSERT (fast bulk creation) ──
+  // ══════════════════════════════════════
+
+  // POST /api/batch — Create multiple items in one call
+  // Body: { epicId?, items: [{ type: "epic"|"area"|"bug"|"task"|"testcase", ... }] }
+  if (pathname === '/api/batch' && req.method === 'POST') {
+    const user = await getUserFromSession(req);
+    if (!user) return sendJSON(res, 401, { error: 'Not logged in' });
+    if (!dbPool) return sendJSON(res, 500, { error: 'Database required' });
+    const { items: itemList } = await parseBody(req);
+    if (!itemList || !Array.isArray(itemList)) return sendJSON(res, 400, { error: 'items array required' });
+
+    const results = [];
+    for (const item of itemList) {
+      try {
+        const t = item.type;
+        if (t === 'epic') {
+          const r = await dbPool.request()
+            .input('name', sql.NVarChar, item.name)
+            .input('desc', sql.NVarChar, item.description || '')
+            .input('createdBy', sql.NVarChar, user.Username)
+            .query(`INSERT INTO Vybe_Epics (Name, Description, CreatedBy) OUTPUT INSERTED.* VALUES (@name, @desc, @createdBy)`);
+          const epic = r.recordset[0];
+          epics.unshift(epic);
+          results.push({ ok: true, type: 'epic', id: epic.Id, name: epic.Name });
+        } else if (t === 'area') {
+          const r = await dbPool.request()
+            .input('epicId', sql.UniqueIdentifier, item.epicId)
+            .input('name', sql.NVarChar, item.name)
+            .input('desc', sql.NVarChar, item.description || '')
+            .input('priority', sql.NVarChar, item.priority || 'P2')
+            .query(`INSERT INTO Vybe_Areas (EpicId, Name, Description, Priority) OUTPUT INSERTED.* VALUES (@epicId, @name, @desc, @priority)`);
+          const area = r.recordset[0];
+          areas.unshift(area);
+          results.push({ ok: true, type: 'area', id: area.Id, name: area.Name });
+        } else if (t === 'bug' || t === 'task') {
+          const table = t === 'bug' ? 'Vybe_Bugs' : 'Vybe_Tasks';
+          const r = await dbPool.request()
+            .input('areaId', sql.UniqueIdentifier, item.areaId)
+            .input('title', sql.NVarChar, item.title)
+            .input('spec', sql.NVarChar, item.spec || '')
+            .input('priority', sql.NVarChar, item.priority || 'P2')
+            .query(`INSERT INTO ${table} (AreaId, Title, Spec, Priority) OUTPUT INSERTED.* VALUES (@areaId, @title, @spec, @priority)`);
+          const created = r.recordset[0];
+          (t === 'bug' ? bugs : tasks).unshift(created);
+          results.push({ ok: true, type: t, id: created.Id, title: created.Title });
+        } else if (t === 'testcase') {
+          const r = await dbPool.request()
+            .input('areaId', sql.UniqueIdentifier, item.areaId)
+            .input('title', sql.NVarChar, item.title)
+            .input('spec', sql.NVarChar, item.spec || '')
+            .input('priority', sql.NVarChar, item.priority || 'P2')
+            .query(`INSERT INTO Vybe_TestCases (AreaId, Title, Spec, Priority) OUTPUT INSERTED.* VALUES (@areaId, @title, @spec, @priority)`);
+          const created = r.recordset[0];
+          testcases.unshift(created);
+          results.push({ ok: true, type: 'testcase', id: created.Id, title: created.Title });
+        } else {
+          results.push({ ok: false, error: `Unknown type: ${t}` });
+        }
+      } catch (e) {
+        results.push({ ok: false, type: item.type, error: e.message });
+      }
+    }
+    await logAudit('Batch', 'bulk', 'batch-insert', user.Username, null, { count: results.filter(r => r.ok).length });
+    return sendJSON(res, 200, { results });
+  }
+
+  // ══════════════════════════════════════
+  // ── NEXT DUE (peek without claiming) ──
+  // ══════════════════════════════════════
+
+  // GET /api/next-due?epicId=X — See what's next in the queue without claiming it
+  if (pathname === '/api/next-due' && req.method === 'GET') {
+    if (!dbPool) return sendJSON(res, 500, { error: 'Database required' });
+    const epicId = url.searchParams.get('epicId');
+    const epicFilter = epicId ? `AND a.EpicId = @epicId` : '';
+    const tables = [
+      { name: 'Vybe_Bugs', type: 'bug' },
+      { name: 'Vybe_Tasks', type: 'task' },
+      { name: 'Vybe_TestCases', type: 'testcase' }
+    ];
+
+    for (const { name, type } of tables) {
+      try {
+        const req2 = dbPool.request();
+        if (epicId) req2.input('epicId', sql.UniqueIdentifier, epicId);
+        const result = await req2.query(`
+          SELECT TOP(1) t.*, a.Name as AreaName, a.EpicId, e.Name as EpicName, '${type}' as _type
+          FROM ${name} t
+          JOIN Vybe_Areas a ON t.AreaId = a.Id
+          JOIN Vybe_Epics e ON a.EpicId = e.Id
+          WHERE t.Status = 'triaged' ${epicFilter}
+          ORDER BY
+            CASE a.Priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 WHEN 'P3' THEN 3 ELSE 9 END,
+            CASE t.Priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 WHEN 'P3' THEN 3 ELSE 9 END,
+            t.CreatedAt ASC
+        `);
+        if (result.recordset.length > 0) {
+          return sendJSON(res, 200, { item: result.recordset[0] });
+        }
+      } catch (e) {
+        console.error(`Next-due error (${name}):`, e.message);
+      }
+    }
+    res.writeHead(204);
+    return res.end();
+  }
+
+  // ══════════════════════════════════════
   // ── BOARD (all items for an epic) ──
   // ══════════════════════════════════════
 
@@ -838,6 +982,8 @@ async function handleRequest(req, res) {
   // ══════════════════════════════════════
 
   if (pathname === '/api/queue/next' && req.method === 'POST') {
+    const user = await getUserFromSession(req);
+    if (!user) return sendJSON(res, 401, { error: 'Auth required' });
     if (!dbPool) return sendJSON(res, 500, { error: 'Database required' });
     const epicId = url.searchParams.get('epicId');
     const claimId = crypto.randomUUID();
@@ -902,6 +1048,8 @@ async function handleRequest(req, res) {
 
   // POST /api/queue/complete/:id
   if (pathname.match(/^\/api\/queue\/complete\/[^/]+$/) && req.method === 'POST') {
+    const user = await getUserFromSession(req);
+    if (!user) return sendJSON(res, 401, { error: 'Auth required' });
     if (!dbPool) return sendJSON(res, 500, { error: 'Database required' });
     const id = pathname.split('/api/queue/complete/')[1];
     const { type, resolution } = await parseBody(req);
@@ -936,6 +1084,8 @@ async function handleRequest(req, res) {
 
   // POST /api/queue/block/:id
   if (pathname.match(/^\/api\/queue\/block\/[^/]+$/) && req.method === 'POST') {
+    const user = await getUserFromSession(req);
+    if (!user) return sendJSON(res, 401, { error: 'Auth required' });
     if (!dbPool) return sendJSON(res, 500, { error: 'Database required' });
     const id = pathname.split('/api/queue/block/')[1];
     const { type, resolution } = await parseBody(req);
