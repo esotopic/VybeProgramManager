@@ -7,25 +7,10 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
-  --bg: #f5f5f5;
-  --surface: #ffffff;
-  --border: #e0e0e0;
-  --text: #1a1a1a;
-  --text-secondary: #666;
-  --text-muted: #999;
-  --accent: #0078d4;
-  --accent-light: #e8f4fd;
-  --danger: #d32f2f;
-  --success: #2e7d32;
-  --warning: #f57c00;
-  --purple: #7b1fa2;
-  --sidebar-bg: #fafafa;
-  --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --col-draft: #9e9e9e;
-  --col-triaged: #0078d4;
-  --col-working: #f57c00;
-  --col-done: #2e7d32;
-  --col-closed: #4a4a4a;
+  --bg: #f5f5f5; --surface: #ffffff; --border: #e0e0e0; --text: #1a1a1a;
+  --text-secondary: #666; --text-muted: #999; --accent: #0078d4; --accent-light: #e8f4fd;
+  --danger: #d32f2f; --success: #2e7d32; --warning: #f57c00; --purple: #7b1fa2;
+  --sidebar-bg: #fafafa; --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
@@ -42,65 +27,79 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .app-layout { display:flex; flex:1; overflow:hidden; }
 
 /* ── Sidebar ── */
-.sidebar { width:200px; background:var(--sidebar-bg); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
-.sidebar .nav-section { padding:12px 0; }
-.sidebar .nav-item { display:flex; align-items:center; gap:8px; padding:6px 16px; font-size:13px; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; }
-.sidebar .nav-item:hover { background:var(--border); color:var(--text); }
-.sidebar .nav-item.active { background:var(--accent-light); color:var(--accent); font-weight:500; }
-.sidebar .nav-item .badge { margin-left:auto; background:var(--danger); color:white; font-size:10px; padding:1px 6px; border-radius:8px; font-weight:600; }
-.sidebar .nav-label { font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:12px 16px 4px; font-weight:600; }
-.sidebar .epic-item { display:flex; align-items:center; gap:6px; padding:4px 16px 4px 24px; font-size:12px; color:var(--text-secondary); cursor:pointer; }
-.sidebar .epic-item:hover { color:var(--accent); }
-.sidebar .epic-item.active { color:var(--accent); font-weight:500; }
+.sidebar { width:260px; background:var(--sidebar-bg); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+.sidebar .section-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 6px; }
+.sidebar .section-title { font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); font-weight:600; }
+.sidebar .add-btn { width:22px; height:22px; border:1px dashed var(--border); border-radius:4px; background:none; cursor:pointer; font-size:14px; color:var(--text-muted); display:flex; align-items:center; justify-content:center; }
+.sidebar .add-btn:hover { border-color:var(--accent); color:var(--accent); }
+.story-list { flex:1; overflow-y:auto; padding:0 8px 8px; }
+.story-item { padding:10px 12px; border-radius:6px; cursor:pointer; margin-bottom:4px; border:1px solid transparent; transition:all 0.15s; }
+.story-item:hover { background:var(--surface); border-color:var(--border); }
+.story-item.active { background:var(--accent-light); border-color:var(--accent); }
+.story-item .story-title { font-size:13px; font-weight:500; line-height:1.3; margin-bottom:6px; }
+.story-item .story-meta { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); }
+.story-item .story-progress { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.story-item .story-progress-bar { height:100%; background:var(--success); border-radius:2px; transition:width 0.3s; }
+.story-item .story-status { font-size:9px; font-weight:600; text-transform:uppercase; padding:1px 5px; border-radius:2px; }
+.story-item .story-status.open { background:#e8f4fd; color:var(--accent); }
+.story-item .story-status.in-progress { background:#fff3e0; color:var(--warning); }
+.story-item .story-status.done { background:#e8f5e9; color:var(--success); }
+.sidebar-footer { border-top:1px solid var(--border); padding:8px; }
+.sidebar-footer .nav-item { display:flex; align-items:center; gap:8px; padding:6px 12px; font-size:13px; color:var(--text-secondary); cursor:pointer; border-radius:4px; }
+.sidebar-footer .nav-item:hover { background:var(--border); color:var(--text); }
 
 /* ── Main Content ── */
 .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-
-/* ── Board Toolbar ── */
-.board-toolbar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; }
-.board-toolbar .search { border:1px solid var(--border); border-radius:4px; padding:5px 10px; font-size:13px; width:220px; outline:none; }
-.board-toolbar .search:focus { border-color:var(--accent); }
-.area-filters { display:flex; gap:4px; flex:1; overflow-x:auto; }
-.area-pill { padding:3px 10px; border-radius:12px; font-size:11px; border:1px solid var(--border); background:var(--surface); cursor:pointer; white-space:nowrap; transition:all 0.15s; }
-.area-pill:hover { border-color:var(--accent); }
-.area-pill.active { background:var(--accent); color:white; border-color:var(--accent); }
+.main-toolbar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+.main-toolbar h2 { font-size:15px; font-weight:600; flex:1; }
 .btn { padding:5px 12px; border-radius:4px; font-size:13px; cursor:pointer; border:none; font-weight:500; transition:all 0.15s; }
 .btn-primary { background:var(--accent); color:white; }
 .btn-primary:hover { background:#006abc; }
 .btn-ghost { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
 .btn-ghost:hover { background:var(--bg); }
+.btn-sm { padding:3px 8px; font-size:11px; }
+.btn-danger { background:var(--danger); color:white; }
 
-/* ── Board Columns ── */
-.board { display:flex; flex:1; overflow-x:auto; padding:12px; gap:10px; }
-.column { min-width:240px; flex:1; display:flex; flex-direction:column; background:var(--surface); border-radius:6px; border:1px solid var(--border); overflow:hidden; }
-.column-header { padding:10px 12px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:8px; border-bottom:2px solid var(--border); }
-.column-header .dot { width:8px; height:8px; border-radius:50%; }
-.column-header .count { margin-left:auto; background:var(--bg); padding:1px 6px; border-radius:8px; font-size:11px; color:var(--text-muted); }
-.column-body { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:6px; }
-
-/* ── Cards ── */
-.card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:10px; cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; }
-.card:hover { box-shadow:var(--card-shadow); border-color:#ccc; }
-.card.type-bug { border-left-color:var(--danger); }
-.card.type-task { border-left-color:var(--accent); }
-.card.type-testcase { border-left-color:var(--success); }
-.card.blocked { border-left-color:var(--danger); background:#fff5f5; }
-.card .card-top { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-.card .type-badge { font-size:9px; font-weight:700; text-transform:uppercase; padding:1px 5px; border-radius:2px; color:white; }
-.card .type-badge.bug { background:var(--danger); }
-.card .type-badge.task { background:var(--accent); }
-.card .type-badge.testcase { background:var(--success); }
-.card .priority { font-size:10px; font-weight:700; padding:1px 4px; border-radius:2px; }
-.card .priority.P0 { background:#ffebee; color:var(--danger); }
-.card .priority.P1 { background:#fff3e0; color:var(--warning); }
-.card .priority.P2 { background:#e8f4fd; color:var(--accent); }
-.card .priority.P3 { background:var(--bg); color:var(--text-muted); }
-.card .card-title { font-size:13px; font-weight:500; line-height:1.3; margin-bottom:6px; }
-.card .card-footer { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); }
-.card .area-tag { background:var(--bg); padding:1px 6px; border-radius:2px; font-size:10px; }
-.card .agent-status { display:flex; align-items:center; gap:4px; margin-left:auto; color:var(--purple); font-weight:500; }
-.card .agent-dot { width:6px; height:6px; border-radius:50%; background:var(--purple); animation:pulse 1.5s infinite; }
+/* ── Item List ── */
+.item-list { flex:1; overflow-y:auto; padding:12px 16px; }
+.item-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:6px; margin-bottom:6px; cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; }
+.item-row:hover { box-shadow:var(--card-shadow); }
+.item-row.type-bug { border-left-color:var(--danger); }
+.item-row.type-task { border-left-color:var(--accent); }
+.item-row.type-testcase { border-left-color:var(--success); }
+.item-row .type-badge { font-size:9px; font-weight:700; text-transform:uppercase; padding:2px 6px; border-radius:3px; color:white; flex-shrink:0; }
+.type-badge.bug { background:var(--danger); }
+.type-badge.task { background:var(--accent); }
+.type-badge.testcase { background:var(--success); }
+.item-row .item-title { font-size:13px; font-weight:500; flex:1; }
+.item-row .priority { font-size:10px; font-weight:700; padding:1px 5px; border-radius:2px; }
+.priority.P0 { background:#ffebee; color:var(--danger); }
+.priority.P1 { background:#fff3e0; color:var(--warning); }
+.priority.P2 { background:#e8f4fd; color:var(--accent); }
+.priority.P3 { background:var(--bg); color:var(--text-muted); }
+.status-chip { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; color:white; white-space:nowrap; }
+.status-chip.draft { background:#9e9e9e; }
+.status-chip.triaged { background:var(--accent); }
+.status-chip.ai-in-progress { background:var(--warning); }
+.status-chip.ai-done { background:var(--success); }
+.status-chip.closed { background:#4a4a4a; }
+.status-chip.blocked { background:var(--danger); }
+.status-chip.pass { background:var(--success); }
+.status-chip.fail { background:var(--danger); }
+.agent-indicator { display:flex; align-items:center; gap:3px; color:var(--purple); font-size:11px; font-weight:500; }
+.agent-dot { width:6px; height:6px; border-radius:50%; background:var(--purple); animation:pulse 1.5s infinite; }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* ── Empty / Welcome ── */
+.empty-state { padding:60px 40px; text-align:center; color:var(--text-muted); }
+.empty-state h3 { font-size:16px; color:var(--text-secondary); margin-bottom:8px; }
+.empty-state p { font-size:13px; margin-bottom:16px; }
+
+/* ── Story Detail Header ── */
+.story-header { padding:16px; background:var(--surface); border-bottom:1px solid var(--border); }
+.story-header h2 { font-size:16px; margin-bottom:4px; }
+.story-header .story-desc { font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
+.story-header .story-ac { font-size:12px; color:var(--text-muted); background:var(--bg); padding:8px 12px; border-radius:4px; white-space:pre-wrap; }
 
 /* ── Detail Panel ── */
 .detail-overlay { position:fixed; top:0; right:0; bottom:0; left:0; background:rgba(0,0,0,0.2); display:none; z-index:100; }
@@ -114,123 +113,64 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .detail-body .field-label { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px; font-weight:600; }
 .detail-body .field-value { font-size:14px; }
 .detail-body .field-value.mono { font-family:'Menlo','Consolas',monospace; font-size:12px; background:var(--bg); padding:10px; border-radius:4px; white-space:pre-wrap; border:1px solid var(--border); max-height:300px; overflow-y:auto; }
-.detail-body .status-pill { display:inline-block; padding:2px 10px; border-radius:10px; font-size:12px; font-weight:500; color:white; }
-.status-draft { background:var(--col-draft); }
-.status-triaged { background:var(--col-triaged); }
-.status-ai-in-progress { background:var(--col-working); }
-.status-ai-done { background:var(--col-done); }
-.status-blocked { background:var(--danger); }
-.status-closed { background:var(--col-closed); }
-.status-pass { background:var(--success); }
-.status-fail { background:var(--danger); }
-.detail-body .audit-entry { padding:8px 0; border-bottom:1px solid var(--bg); font-size:12px; display:flex; gap:8px; }
-.detail-body .audit-entry .audit-time { color:var(--text-muted); min-width:80px; }
-.detail-body .audit-entry .audit-actor { font-weight:500; min-width:60px; }
 .detail-actions { padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; }
-.detail-actions select { padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:13px; }
 
-/* ── Auth Modal ── */
+/* ── Modals ── */
 .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:200; }
-.modal { background:var(--surface); border-radius:8px; padding:32px; width:360px; max-width:90vw; }
-.modal h2 { font-size:20px; margin-bottom:16px; }
-.modal input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:4px; font-size:14px; margin-bottom:10px; outline:none; }
-.modal input:focus { border-color:var(--accent); }
+.modal { background:var(--surface); border-radius:8px; padding:32px; width:440px; max-width:90vw; }
+.modal h2 { font-size:18px; margin-bottom:16px; }
+.modal input, .modal textarea, .modal select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:4px; font-size:14px; margin-bottom:10px; outline:none; font-family:inherit; }
+.modal input:focus, .modal textarea:focus { border-color:var(--accent); }
+.modal textarea { min-height:80px; resize:vertical; }
 .modal .btn { width:100%; padding:10px; font-size:14px; }
-.modal .switch-link { text-align:center; margin-top:12px; font-size:13px; color:var(--text-secondary); }
-.modal .switch-link a { color:var(--accent); cursor:pointer; text-decoration:none; }
 .modal .error { color:var(--danger); font-size:13px; margin-bottom:8px; }
-
-/* ── Create Modal ── */
-.create-modal input, .create-modal textarea, .create-modal select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:4px; font-size:14px; margin-bottom:10px; outline:none; font-family:inherit; }
-.create-modal textarea { min-height:120px; resize:vertical; }
-.create-modal select { cursor:pointer; }
-
-/* ── Empty state ── */
-.empty { padding:40px; text-align:center; color:var(--text-muted); font-size:13px; }
 </style>
 </head>
 <body>
 
-<!-- ── Top Nav ── -->
 <div class="topnav">
   <div class="logo">VYBE</div>
   <div class="breadcrumb">
     <span>/</span>
     <select id="epicSelect" onchange="switchEpic(this.value)">
-      <option value="">All Projects</option>
+      <option value="">Select Project</option>
     </select>
   </div>
   <div class="spacer"></div>
   <div class="user-area" id="userArea">
     <span id="userDisplay"></span>
-    <div class="avatar" id="userAvatar"></div>
+    <div class="avatar" id="userAvatar">?</div>
   </div>
 </div>
 
-<!-- ── Layout ── -->
 <div class="app-layout">
-
-  <!-- ── Sidebar ── -->
+  <!-- Sidebar: User Stories -->
   <div class="sidebar">
-    <div class="nav-section">
-      <div class="nav-item active" data-view="board" onclick="switchView('board')">
-        <span>📋</span> Board
-      </div>
-      <div class="nav-item" data-view="backlog" onclick="switchView('backlog')">
-        <span>📝</span> Backlog
-      </div>
-      <div class="nav-item" data-view="triage" onclick="switchView('triage')">
-        <span>🔍</span> Triage <span class="badge" id="triageBadge" style="display:none">0</span>
-      </div>
+    <div class="section-header">
+      <span class="section-title">User Stories</span>
+      <button class="add-btn" onclick="showCreateStory()" title="New Story">+</button>
     </div>
-    <div class="nav-label">Projects</div>
-    <div id="epicList"></div>
-    <div style="flex:1"></div>
-    <div class="nav-section" style="border-top:1px solid var(--border)">
-      <div class="nav-item" onclick="showCreateEpic()">
-        <span>➕</span> New Project
-      </div>
-      <div class="nav-item" id="authNavItem" onclick="toggleAuth()">
-        <span>👤</span> <span id="authLabel">Sign In</span>
-      </div>
+    <div class="story-list" id="storyList">
+      <div class="empty-state" style="padding:20px"><p>Select a project to see stories</p></div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="nav-item" onclick="showCreateEpic()">+ New Project</div>
+      <div class="nav-item" id="authNavItem" onclick="toggleAuth()"><span id="authLabel">Sign In</span></div>
     </div>
   </div>
 
-  <!-- ── Main ── -->
+  <!-- Main: Items for selected story -->
   <div class="main">
-    <div class="board-toolbar">
-      <input class="search" placeholder="Search items..." id="searchInput" oninput="renderBoard()">
-      <div class="area-filters" id="areaFilters"></div>
-      <button class="btn btn-primary" onclick="showCreateItem()">+ New Item</button>
-    </div>
-
-    <!-- Board View -->
-    <div class="board" id="boardView">
-      <div class="column" id="col-draft">
-        <div class="column-header"><div class="dot" style="background:var(--col-draft)"></div>Draft<span class="count" id="count-draft">0</span></div>
-        <div class="column-body" id="body-draft"></div>
-      </div>
-      <div class="column" id="col-triaged">
-        <div class="column-header"><div class="dot" style="background:var(--col-triaged)"></div>Triaged<span class="count" id="count-triaged">0</span></div>
-        <div class="column-body" id="body-triaged"></div>
-      </div>
-      <div class="column" id="col-ai-in-progress">
-        <div class="column-header"><div class="dot" style="background:var(--col-working)"></div>AI Working<span class="count" id="count-ai-in-progress">0</span></div>
-        <div class="column-body" id="body-ai-in-progress"></div>
-      </div>
-      <div class="column" id="col-ai-done">
-        <div class="column-header"><div class="dot" style="background:var(--col-done)"></div>AI Done<span class="count" id="count-ai-done">0</span></div>
-        <div class="column-body" id="body-ai-done"></div>
-      </div>
-      <div class="column" id="col-closed">
-        <div class="column-header"><div class="dot" style="background:var(--col-closed)"></div>Closed<span class="count" id="count-closed">0</span></div>
-        <div class="column-body" id="body-closed"></div>
+    <div id="mainContent">
+      <div class="empty-state">
+        <h3>Welcome to Vybe PM</h3>
+        <p>Select a project and user story to view work items</p>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── Detail Panel ── -->
+<!-- Detail Panel -->
 <div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
   <div class="detail-panel">
     <div class="detail-header">
@@ -243,67 +183,67 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
 </div>
 
-<!-- ── Auth Modal (Claude-as-2FA) ── -->
+<!-- Auth Modal -->
 <div class="modal-overlay" id="authModal" style="display:none">
   <div class="modal" style="text-align:center">
-    <div style="font-size:32px;margin-bottom:8px">🔐</div>
+    <div style="font-size:32px;margin-bottom:8px">&#128274;</div>
     <h2>Enter Key</h2>
-    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Ask Claude for a login key</p>
+    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Enter your passkey</p>
     <div class="error" id="authError" style="display:none"></div>
-    <input id="authKey" placeholder="Paste your key here" style="text-align:center;font-size:18px;letter-spacing:2px;font-family:monospace" onkeydown="if(event.key==='Enter')submitAuth()">
+    <input id="authKey" placeholder="Passkey" style="text-align:center;font-size:18px;letter-spacing:2px;font-family:monospace" onkeydown="if(event.key==='Enter')submitAuth()">
     <button class="btn btn-primary" onclick="submitAuth()">Unlock</button>
   </div>
 </div>
 
-<!-- ── Create Item Modal ── -->
-<div class="modal-overlay" id="createModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal create-modal" style="width:440px">
-    <h2 id="createTitle">New Work Item</h2>
-    <div class="error" id="createError" style="display:none"></div>
-    <select id="createType">
-      <option value="bug">Bug</option>
-      <option value="task">Task</option>
-      <option value="testcase">Test Case</option>
-    </select>
-    <select id="createArea"></select>
-    <input id="createItemTitle" placeholder="Title">
-    <select id="createPriority">
+<!-- Create Story Modal -->
+<div class="modal-overlay" id="storyModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <h2>New User Story</h2>
+    <div class="error" id="storyError" style="display:none"></div>
+    <input id="storyTitle" placeholder="As a user, I want to...">
+    <textarea id="storyDesc" placeholder="Description"></textarea>
+    <textarea id="storyAC" placeholder="Acceptance Criteria (one per line)" style="min-height:60px"></textarea>
+    <select id="storyPriority">
       <option value="P0">P0 — Critical</option>
       <option value="P1">P1 — High</option>
       <option value="P2" selected>P2 — Medium</option>
       <option value="P3">P3 — Low</option>
     </select>
-    <textarea id="createSpec" placeholder="Spec / Description (markdown)"></textarea>
-    <button class="btn btn-primary" onclick="submitCreateItem()">Create</button>
+    <button class="btn btn-primary" onclick="submitCreateStory()">Create Story</button>
   </div>
 </div>
 
-<!-- ── Create Epic Modal ── -->
+<!-- Create Item Modal -->
+<div class="modal-overlay" id="itemModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal">
+    <h2>New Work Item</h2>
+    <div class="error" id="itemError" style="display:none"></div>
+    <select id="itemType">
+      <option value="task">Task</option>
+      <option value="bug">Bug</option>
+      <option value="testcase">Test Case</option>
+    </select>
+    <select id="itemStory"></select>
+    <input id="itemTitle" placeholder="Title">
+    <select id="itemPriority">
+      <option value="P0">P0 — Critical</option>
+      <option value="P1">P1 — High</option>
+      <option value="P2" selected>P2 — Medium</option>
+      <option value="P3">P3 — Low</option>
+    </select>
+    <textarea id="itemSpec" placeholder="Spec / Description"></textarea>
+    <button class="btn btn-primary" onclick="submitCreateItem()">Create Item</button>
+  </div>
+</div>
+
+<!-- Create Epic Modal -->
 <div class="modal-overlay" id="epicModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal create-modal">
-    <h2>New Project (Epic)</h2>
+  <div class="modal">
+    <h2>New Project</h2>
     <div class="error" id="epicError" style="display:none"></div>
     <input id="epicName" placeholder="Project name">
     <textarea id="epicDesc" placeholder="Description" style="min-height:60px"></textarea>
-    <button class="btn btn-primary" onclick="submitCreateEpic()">Create</button>
-  </div>
-</div>
-
-<!-- ── Create Area Modal ── -->
-<div class="modal-overlay" id="areaModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal create-modal">
-    <h2>New Area (User Story)</h2>
-    <div class="error" id="areaError" style="display:none"></div>
-    <select id="areaEpic"></select>
-    <input id="areaName" placeholder="Area name">
-    <textarea id="areaDesc" placeholder="Description" style="min-height:60px"></textarea>
-    <select id="areaPriority">
-      <option value="P0">P0 — Critical</option>
-      <option value="P1">P1 — High</option>
-      <option value="P2" selected>P2 — Medium</option>
-      <option value="P3">P3 — Low</option>
-    </select>
-    <button class="btn btn-primary" onclick="submitCreateArea()">Create</button>
+    <button class="btn btn-primary" onclick="submitCreateEpic()">Create Project</button>
   </div>
 </div>
 
@@ -311,28 +251,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 // ── State ──
 let currentUser = null;
 let allEpics = [];
-let allAreas = [];
-let boardItems = [];
+let allStories = [];
+let currentItems = [];
 let selectedEpicId = '';
-let selectedAreaId = '';
-// no authMode needed — single key input
+let selectedStoryId = '';
 
-// ── API helper ──
+// ── API ──
 async function api(url, opts = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    ...opts,
-    body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
+  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts, body: opts.body ? JSON.stringify(opts.body) : undefined });
   if (res.status === 204) return null;
   return res.json();
 }
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
 // ── Init ──
 async function init() {
   await checkAuth();
-  await loadBoard();
+  await loadEpics();
 }
 
 async function checkAuth() {
@@ -340,293 +275,246 @@ async function checkAuth() {
     const data = await api('/api/me');
     if (data && data.user) {
       currentUser = data.user;
-      document.getElementById('userDisplay').textContent = currentUser.DisplayName || currentUser.Username || 'user';
-      document.getElementById('userAvatar').textContent = (currentUser.DisplayName || currentUser.Username || '?')[0].toUpperCase();
+      document.getElementById('userDisplay').textContent = currentUser.DisplayName || 'user';
+      document.getElementById('userAvatar').textContent = (currentUser.DisplayName || '?')[0].toUpperCase();
       document.getElementById('authLabel').textContent = 'Sign Out';
-    } else {
-      currentUser = null;
-      document.getElementById('userDisplay').textContent = '';
-      document.getElementById('userAvatar').textContent = '?';
-      document.getElementById('authLabel').textContent = 'Sign In';
-    }
-  } catch (e) {
-    currentUser = null;
-  }
+    } else { currentUser = null; document.getElementById('userDisplay').textContent = ''; document.getElementById('userAvatar').textContent = '?'; document.getElementById('authLabel').textContent = 'Sign In'; }
+  } catch { currentUser = null; }
 }
 
-async function loadBoard() {
-  const params = selectedEpicId ? `?epicId=${selectedEpicId}` : '';
-  const data = await api(`/api/board${params}`);
-  if (!data) return;
-  boardItems = data.items || [];
-  allAreas = data.areas || [];
-  allEpics = data.epics || [];
-  renderEpics();
-  renderAreaFilters();
-  renderBoard();
-  updateTriageBadge();
-}
-
-// ── Render Epics ──
-function renderEpics() {
+async function loadEpics() {
+  const data = await api('/api/epics');
+  allEpics = data?.epics || [];
   const sel = document.getElementById('epicSelect');
-  sel.innerHTML = '<option value="">All Projects</option>';
-  allEpics.forEach(e => {
-    sel.innerHTML += `<option value="${e.Id}" ${e.Id === selectedEpicId ? 'selected' : ''}>${e.Name}</option>`;
-  });
-
-  const list = document.getElementById('epicList');
-  list.innerHTML = '';
-  allEpics.forEach(e => {
-    list.innerHTML += `<div class="epic-item ${String(e.Id) === selectedEpicId ? 'active' : ''}" onclick="switchEpic('${e.Id}')">📁 ${esc(e.Name)}</div>`;
-  });
+  sel.innerHTML = '<option value="">Select Project</option>';
+  allEpics.forEach(e => { sel.innerHTML += `<option value="${e.Id}" ${String(e.Id)===selectedEpicId?'selected':''}>${esc(e.Name)}</option>`; });
+  if (selectedEpicId) loadStories();
 }
 
 function switchEpic(id) {
   selectedEpicId = id;
-  selectedAreaId = '';
-  loadBoard();
+  selectedStoryId = '';
+  if (id) loadStories();
+  else { allStories = []; renderStories(); renderMain(); }
 }
 
-// ── Render Area Filters ──
-function renderAreaFilters() {
-  const container = document.getElementById('areaFilters');
-  container.innerHTML = `<div class="area-pill ${!selectedAreaId ? 'active' : ''}" onclick="filterArea('')">All</div>`;
-  allAreas.forEach(a => {
-    container.innerHTML += `<div class="area-pill ${String(a.Id) === selectedAreaId ? 'active' : ''}" onclick="filterArea('${a.Id}')">${esc(a.Name)}</div>`;
-  });
-  // Add area button
-  container.innerHTML += `<div class="area-pill" onclick="showCreateArea()" style="border-style:dashed;color:var(--text-muted)">+ Area</div>`;
+async function loadStories() {
+  if (!selectedEpicId) return;
+  const data = await api(`/api/stories?epicId=${selectedEpicId}`);
+  allStories = data?.stories || [];
+  renderStories();
+  if (selectedStoryId) loadStoryItems(selectedStoryId);
+  else renderMain();
 }
 
-function filterArea(id) {
-  selectedAreaId = id;
-  renderAreaFilters();
-  renderBoard();
+function renderStories() {
+  const list = document.getElementById('storyList');
+  if (!allStories.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:20px"><p>No stories yet. Click + to create one.</p></div>';
+    return;
+  }
+  list.innerHTML = allStories.map(s => {
+    const pct = s._totalItems > 0 ? Math.round((s._doneItems / s._totalItems) * 100) : 0;
+    const statusClass = s.Status === 'done' ? 'done' : (s._doneItems > 0 ? 'in-progress' : 'open');
+    return `
+      <div class="story-item ${String(s.Id)===selectedStoryId?'active':''}" onclick="selectStory('${s.Id}')">
+        <div class="story-title">${esc(s.Title)}</div>
+        <div class="story-meta">
+          <span class="story-status ${statusClass}">${statusClass}</span>
+          <span>${s._doneItems}/${s._totalItems}</span>
+          <div class="story-progress"><div class="story-progress-bar" style="width:${pct}%"></div></div>
+          <span class="priority ${s.Priority||'P2'}" style="font-size:10px;font-weight:700">${s.Priority||'P2'}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
-// ── Render Board ──
-function renderBoard() {
-  const search = document.getElementById('searchInput').value.toLowerCase();
-  const columns = { draft:[], triaged:[], 'ai-in-progress':[], 'ai-done':[], closed:[] };
+function selectStory(id) {
+  selectedStoryId = id;
+  renderStories();
+  loadStoryItems(id);
+}
 
-  // Map testcase pass/fail to closed column, blocked to ai-in-progress
-  boardItems.forEach(item => {
-    const status = item.Status || 'draft';
-    if (selectedAreaId && String(item.AreaId) !== selectedAreaId) return;
-    if (search && !(item.Title || '').toLowerCase().includes(search)) return;
+async function loadStoryItems(storyId) {
+  const data = await api(`/api/stories/${storyId}`);
+  if (!data) return;
+  currentItems = data.items || [];
+  renderMain(data.story);
+}
 
-    let col = status;
-    if (status === 'pass' || status === 'fail') col = 'closed';
-    if (status === 'blocked') col = 'ai-in-progress';
-    if (!columns[col]) col = 'draft';
-
-    columns[col].push(item);
-  });
-
-  Object.keys(columns).forEach(col => {
-    document.getElementById(`count-${col}`).textContent = columns[col].length;
-    const body = document.getElementById(`body-${col}`);
-    if (columns[col].length === 0) {
-      body.innerHTML = '<div class="empty">No items</div>';
-      return;
-    }
-    body.innerHTML = columns[col].map(item => {
+function renderMain(story) {
+  const main = document.getElementById('mainContent');
+  if (!selectedEpicId) {
+    main.innerHTML = '<div class="empty-state"><h3>Welcome to Vybe PM</h3><p>Select a project to get started</p></div>';
+    return;
+  }
+  if (!selectedStoryId || !story) {
+    main.innerHTML = `<div class="empty-state"><h3>Select a User Story</h3><p>Choose a story from the sidebar to view its items, or create a new one</p>
+      <button class="btn btn-primary" onclick="showCreateItem()" style="width:auto;margin-top:8px">+ New Item</button></div>`;
+    return;
+  }
+  const acHtml = story.AcceptanceCriteria ? `<div class="story-ac">${esc(story.AcceptanceCriteria)}</div>` : '';
+  const descHtml = story.Description ? `<div class="story-desc">${esc(story.Description)}</div>` : '';
+  let html = `
+    <div class="story-header">
+      <h2>${esc(story.Title)}</h2>
+      ${descHtml}
+      ${acHtml}
+    </div>
+    <div class="main-toolbar">
+      <h2 style="font-size:13px;color:var(--text-secondary)">${currentItems.length} item${currentItems.length!==1?'s':''}</h2>
+      <button class="btn btn-ghost btn-sm" onclick="triageAllDraft()">Triage All Draft</button>
+      <button class="btn btn-primary btn-sm" onclick="showCreateItem()">+ New Item</button>
+    </div>
+    <div class="item-list">
+  `;
+  if (!currentItems.length) {
+    html += '<div class="empty-state" style="padding:30px"><p>No items yet. Create tasks, bugs, or test cases for this story.</p></div>';
+  } else {
+    // Sort: draft first, then triaged, then in-progress, then done, then closed
+    const order = { draft:0, triaged:1, 'ai-in-progress':2, blocked:2, 'ai-done':3, pass:4, fail:4, closed:5 };
+    const sorted = [...currentItems].sort((a,b) => (order[a.Status]||9) - (order[b.Status]||9));
+    sorted.forEach(item => {
       const type = item._type || 'task';
-      const isBlocked = item.Status === 'blocked';
-      const isWorking = item.Status === 'ai-in-progress';
-      const area = allAreas.find(a => String(a.Id) === String(item.AreaId));
-      return `
-        <div class="card type-${type} ${isBlocked ? 'blocked' : ''}" onclick="openDetail('${item.Id}','${type}')">
-          <div class="card-top">
-            <span class="type-badge ${type}">${type === 'testcase' ? 'test' : type}</span>
-            <span class="priority ${item.Priority || 'P2'}">${item.Priority || 'P2'}</span>
-          </div>
-          <div class="card-title">${esc(item.Title)}</div>
-          <div class="card-footer">
-            ${area ? `<span class="area-tag">${esc(area.Name)}</span>` : ''}
-            ${isWorking ? '<span class="agent-status"><span class="agent-dot"></span>claude</span>' : ''}
-            ${isBlocked ? '<span style="color:var(--danger);font-weight:500;margin-left:auto">BLOCKED</span>' : ''}
-          </div>
+      const status = item.Status || 'draft';
+      const isWorking = status === 'ai-in-progress';
+      html += `
+        <div class="item-row type-${type}" onclick="openDetail('${item.Id}','${type}')">
+          <span class="type-badge ${type}">${type==='testcase'?'TC':type==='bug'?'BUG':'TASK'}</span>
+          <span class="item-title">${esc(item.Title)}</span>
+          <span class="priority ${item.Priority||'P2'}">${item.Priority||'P2'}</span>
+          ${isWorking?'<span class="agent-indicator"><span class="agent-dot"></span>claude</span>':''}
+          <span class="status-chip ${status}">${status}</span>
         </div>
       `;
-    }).join('');
-  });
-}
-
-function updateTriageBadge() {
-  const draftCount = boardItems.filter(i => i.Status === 'draft').length;
-  const badge = document.getElementById('triageBadge');
-  if (draftCount > 0) {
-    badge.style.display = '';
-    badge.textContent = draftCount;
-  } else {
-    badge.style.display = 'none';
+    });
   }
+  html += '</div>';
+  main.innerHTML = html;
 }
 
 // ── Detail Panel ──
 function openDetail(id, type) {
-  const item = boardItems.find(i => String(i.Id) === id && i._type === type);
+  const item = currentItems.find(i => String(i.Id) === id && i._type === type);
   if (!item) return;
-
   document.getElementById('detailType').className = `type-badge ${type}`;
-  document.getElementById('detailType').textContent = type === 'testcase' ? 'test' : type;
+  document.getElementById('detailType').textContent = type === 'testcase' ? 'TC' : type.toUpperCase();
   document.getElementById('detailTitle').textContent = item.Title;
-
-  const area = allAreas.find(a => String(a.Id) === String(item.AreaId));
-  const statusClass = `status-${(item.Status || 'draft').replace(/\s+/g, '-')}`;
-
+  const status = item.Status || 'draft';
   document.getElementById('detailBody').innerHTML = `
-    <div class="field">
-      <div class="field-label">Status</div>
-      <div class="field-value"><span class="status-pill ${statusClass}">${item.Status || 'draft'}</span></div>
-    </div>
-    <div class="field">
-      <div class="field-label">Priority</div>
-      <div class="field-value"><span class="priority ${item.Priority || 'P2'}" style="font-size:13px">${item.Priority || 'P2'}</span></div>
-    </div>
-    <div class="field">
-      <div class="field-label">Area</div>
-      <div class="field-value">${area ? esc(area.Name) : '—'}</div>
-    </div>
+    <div class="field"><div class="field-label">Status</div><div class="field-value"><span class="status-chip ${status}">${status}</span></div></div>
+    <div class="field"><div class="field-label">Priority</div><div class="field-value"><span class="priority ${item.Priority||'P2'}" style="font-size:13px">${item.Priority||'P2'}</span></div></div>
     ${item.AssignedTo ? `<div class="field"><div class="field-label">Assigned To</div><div class="field-value">${esc(item.AssignedTo)}</div></div>` : ''}
-    <div class="field">
-      <div class="field-label">Created</div>
-      <div class="field-value">${item.CreatedAt ? new Date(item.CreatedAt).toLocaleDateString() : '—'}</div>
-    </div>
+    <div class="field"><div class="field-label">Created</div><div class="field-value">${item.CreatedAt ? new Date(item.CreatedAt).toLocaleDateString() : '-'}</div></div>
     ${item.Spec ? `<div class="field"><div class="field-label">Spec</div><div class="field-value mono">${esc(item.Spec)}</div></div>` : ''}
     ${item.Resolution ? `<div class="field"><div class="field-label">Resolution</div><div class="field-value mono">${esc(item.Resolution)}</div></div>` : ''}
     ${item.LastResult ? `<div class="field"><div class="field-label">Last Result</div><div class="field-value mono">${esc(item.LastResult)}</div></div>` : ''}
   `;
-
-  // Actions
   const actions = document.getElementById('detailActions');
   actions.innerHTML = '';
   if (currentUser) {
-    if (item.Status === 'draft') {
-      actions.innerHTML = `<button class="btn btn-primary" onclick="triageItem('${item.Id}','${type}')">Triage</button>`;
-    }
-    if (item.Status === 'ai-done') {
-      actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','closed')">Close</button>`;
-    }
-    if (item.Status === 'blocked') {
-      actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','triaged')">Unblock → Triaged</button>`;
-    }
+    if (status === 'draft') actions.innerHTML = `<button class="btn btn-primary" onclick="triageItem('${item.Id}','${type}')">Triage</button>`;
+    if (status === 'ai-done') actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','closed')">Close</button>`;
+    if (status === 'blocked') actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','triaged')">Unblock</button>`;
   }
-
   document.getElementById('detailOverlay').classList.add('open');
-
-  // Load audit
-  loadAudit(type, id);
 }
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
 
-async function loadAudit(type, id) {
-  const typeName = type === 'bug' ? 'Bug' : type === 'task' ? 'Task' : 'TestCase';
-  const data = await api(`/api/audit?type=${typeName}&id=${id}&limit=20`);
-  if (data && data.log && data.log.length) {
-    const auditHtml = data.log.map(e => `
-      <div class="audit-entry">
-        <span class="audit-time">${new Date(e.CreatedAt).toLocaleString()}</span>
-        <span class="audit-actor">${esc(e.Actor)}</span>
-        <span>${esc(e.Action)}</span>
-      </div>
-    `).join('');
-    document.getElementById('detailBody').innerHTML += `
-      <div class="field" style="margin-top:16px">
-        <div class="field-label">Audit Trail</div>
-        ${auditHtml}
-      </div>
-    `;
-  }
-}
-
-function closeDetail() {
-  document.getElementById('detailOverlay').classList.remove('open');
-}
-
-// ── Status Changes ──
+// ── Actions ──
 async function triageItem(id, type) {
-  await api(`/api/triage/${id}`, { method: 'POST', body: { type } });
+  await api(`/api/triage/${id}`, { method:'POST', body:{ type } });
   closeDetail();
-  await loadBoard();
+  await loadStoryItems(selectedStoryId);
+  await loadStories();
+}
+
+async function triageAllDraft() {
+  const drafts = currentItems.filter(i => i.Status === 'draft').map(i => ({ id: String(i.Id), type: i._type }));
+  if (!drafts.length) return;
+  await api('/api/triage/batch', { method:'POST', body:{ items: drafts } });
+  await loadStoryItems(selectedStoryId);
+  await loadStories();
 }
 
 async function updateStatus(id, type, newStatus) {
-  const table = type === 'bug' ? 'bugs' : type === 'task' ? 'tasks' : 'testcases';
-  await api(`/api/${table}/${id}`, { method: 'PUT', body: { status: newStatus } });
+  await api(`/api/items/${id}`, { method:'PUT', body:{ type, status: newStatus } });
   closeDetail();
-  await loadBoard();
+  await loadStoryItems(selectedStoryId);
+  await loadStories();
 }
 
-// ── Auth (Claude-as-2FA) ──
+// ── Auth ──
 function toggleAuth() {
-  if (currentUser) {
-    api('/api/logout', { method: 'POST' }).then(() => {
-      currentUser = null;
-      checkAuth();
-    });
-    return;
-  }
+  if (currentUser) { api('/api/logout',{method:'POST'}).then(()=>{currentUser=null;checkAuth();}); return; }
   document.getElementById('authModal').style.display = '';
   document.getElementById('authError').style.display = 'none';
   document.getElementById('authKey').value = '';
   document.getElementById('authKey').focus();
 }
-
 async function submitAuth() {
   const key = document.getElementById('authKey').value.trim();
-  if (!key) { showAuthError('Paste your key'); return; }
-
-  const data = await api('/api/login', { method: 'POST', body: { key } });
-  if (data && data.ok) {
-    document.getElementById('authModal').style.display = 'none';
-    await checkAuth();
-    await loadBoard();
-  } else {
-    showAuthError(data?.error || 'Invalid or expired key');
-  }
+  if (!key) { document.getElementById('authError').textContent='Enter key'; document.getElementById('authError').style.display=''; return; }
+  const data = await api('/api/login', { method:'POST', body:{ key } });
+  if (data?.ok) { document.getElementById('authModal').style.display='none'; await checkAuth(); await loadEpics(); }
+  else { document.getElementById('authError').textContent=data?.error||'Invalid key'; document.getElementById('authError').style.display=''; }
 }
 
-function showAuthError(msg) {
-  const el = document.getElementById('authError');
-  el.textContent = msg;
-  el.style.display = '';
+// ── Create Story ──
+function showCreateStory() {
+  if (!currentUser) { toggleAuth(); return; }
+  if (!selectedEpicId) { alert('Select a project first'); return; }
+  document.getElementById('storyModal').style.display = '';
+  document.getElementById('storyError').style.display = 'none';
+  document.getElementById('storyTitle').value = '';
+  document.getElementById('storyDesc').value = '';
+  document.getElementById('storyAC').value = '';
+  document.getElementById('storyTitle').focus();
+}
+async function submitCreateStory() {
+  const title = document.getElementById('storyTitle').value.trim();
+  if (!title) { document.getElementById('storyError').textContent='Title required'; document.getElementById('storyError').style.display=''; return; }
+  const data = await api('/api/stories', { method:'POST', body:{
+    epicId: selectedEpicId,
+    title,
+    description: document.getElementById('storyDesc').value,
+    acceptanceCriteria: document.getElementById('storyAC').value,
+    priority: document.getElementById('storyPriority').value
+  }});
+  if (data?.story) { document.getElementById('storyModal').style.display='none'; await loadStories(); selectStory(String(data.story.Id)); }
+  else { document.getElementById('storyError').textContent=data?.error||'Failed'; document.getElementById('storyError').style.display=''; }
 }
 
 // ── Create Item ──
 function showCreateItem() {
   if (!currentUser) { toggleAuth(); return; }
-  document.getElementById('createModal').style.display = '';
-  document.getElementById('createError').style.display = 'none';
-  document.getElementById('createItemTitle').value = '';
-  document.getElementById('createSpec').value = '';
-  const sel = document.getElementById('createArea');
+  if (!allStories.length) { alert('Create a user story first'); return; }
+  document.getElementById('itemModal').style.display = '';
+  document.getElementById('itemError').style.display = 'none';
+  document.getElementById('itemTitle').value = '';
+  document.getElementById('itemSpec').value = '';
+  const sel = document.getElementById('itemStory');
   sel.innerHTML = '';
-  allAreas.forEach(a => {
-    sel.innerHTML += `<option value="${a.Id}">${esc(a.Name)}</option>`;
-  });
-  if (!allAreas.length) sel.innerHTML = '<option value="">No areas — create one first</option>';
+  allStories.forEach(s => { sel.innerHTML += `<option value="${s.Id}" ${String(s.Id)===selectedStoryId?'selected':''}>${esc(s.Title)}</option>`; });
+  document.getElementById('itemTitle').focus();
 }
-
 async function submitCreateItem() {
-  const areaId = document.getElementById('createArea').value;
-  if (!areaId) { document.getElementById('createError').textContent = 'Create an area first'; document.getElementById('createError').style.display = ''; return; }
-  const type = document.getElementById('createType').value;
-  const title = document.getElementById('createItemTitle').value.trim();
-  if (!title) { document.getElementById('createError').textContent = 'Title required'; document.getElementById('createError').style.display = ''; return; }
-  const priority = document.getElementById('createPriority').value;
-  const spec = document.getElementById('createSpec').value;
-
-  const table = type === 'bug' ? 'bugs' : type === 'task' ? 'tasks' : 'testcases';
-  const data = await api(`/api/areas/${areaId}/${table}`, { method: 'POST', body: { title, spec, priority } });
-  if (data && data.item) {
-    document.getElementById('createModal').style.display = 'none';
-    await loadBoard();
-  } else {
-    document.getElementById('createError').textContent = data?.error || 'Failed';
-    document.getElementById('createError').style.display = '';
-  }
+  const userStoryId = document.getElementById('itemStory').value;
+  const title = document.getElementById('itemTitle').value.trim();
+  if (!title) { document.getElementById('itemError').textContent='Title required'; document.getElementById('itemError').style.display=''; return; }
+  const data = await api('/api/items', { method:'POST', body:{
+    type: document.getElementById('itemType').value,
+    userStoryId,
+    title,
+    spec: document.getElementById('itemSpec').value,
+    priority: document.getElementById('itemPriority').value
+  }});
+  if (data?.item) {
+    document.getElementById('itemModal').style.display='none';
+    if (String(userStoryId) === selectedStoryId) await loadStoryItems(selectedStoryId);
+    await loadStories();
+  } else { document.getElementById('itemError').textContent=data?.error||'Failed'; document.getElementById('itemError').style.display=''; }
 }
 
 // ── Create Epic ──
@@ -636,73 +524,16 @@ function showCreateEpic() {
   document.getElementById('epicError').style.display = 'none';
   document.getElementById('epicName').value = '';
   document.getElementById('epicDesc').value = '';
+  document.getElementById('epicName').focus();
 }
-
 async function submitCreateEpic() {
   const name = document.getElementById('epicName').value.trim();
-  if (!name) { document.getElementById('epicError').textContent = 'Name required'; document.getElementById('epicError').style.display = ''; return; }
-  const description = document.getElementById('epicDesc').value;
-  const data = await api('/api/epics', { method: 'POST', body: { name, description } });
-  if (data && data.epic) {
-    document.getElementById('epicModal').style.display = 'none';
-    selectedEpicId = String(data.epic.Id);
-    await loadBoard();
-  } else {
-    document.getElementById('epicError').textContent = data?.error || 'Failed';
-    document.getElementById('epicError').style.display = '';
-  }
+  if (!name) { document.getElementById('epicError').textContent='Name required'; document.getElementById('epicError').style.display=''; return; }
+  const data = await api('/api/epics', { method:'POST', body:{ name, description: document.getElementById('epicDesc').value }});
+  if (data?.epic) { document.getElementById('epicModal').style.display='none'; selectedEpicId = String(data.epic.Id); await loadEpics(); }
+  else { document.getElementById('epicError').textContent=data?.error||'Failed'; document.getElementById('epicError').style.display=''; }
 }
 
-// ── Create Area ──
-function showCreateArea() {
-  if (!currentUser) { toggleAuth(); return; }
-  if (!allEpics.length) { alert('Create a project first'); return; }
-  document.getElementById('areaModal').style.display = '';
-  document.getElementById('areaError').style.display = 'none';
-  document.getElementById('areaName').value = '';
-  document.getElementById('areaDesc').value = '';
-  const sel = document.getElementById('areaEpic');
-  sel.innerHTML = '';
-  allEpics.forEach(e => {
-    sel.innerHTML += `<option value="${e.Id}" ${String(e.Id) === selectedEpicId ? 'selected' : ''}>${esc(e.Name)}</option>`;
-  });
-}
-
-async function submitCreateArea() {
-  const epicId = document.getElementById('areaEpic').value;
-  const name = document.getElementById('areaName').value.trim();
-  if (!name) { document.getElementById('areaError').textContent = 'Name required'; document.getElementById('areaError').style.display = ''; return; }
-  const description = document.getElementById('areaDesc').value;
-  const priority = document.getElementById('areaPriority').value;
-  const data = await api(`/api/epics/${epicId}/areas`, { method: 'POST', body: { name, description, priority } });
-  if (data && data.area) {
-    document.getElementById('areaModal').style.display = 'none';
-    await loadBoard();
-  } else {
-    document.getElementById('areaError').textContent = data?.error || 'Failed';
-    document.getElementById('areaError').style.display = '';
-  }
-}
-
-// ── View Switching ──
-function switchView(view) {
-  document.querySelectorAll('.nav-item[data-view]').forEach(el => el.classList.remove('active'));
-  document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
-  // For MVP, board is the only real view. Triage just filters to draft items.
-  if (view === 'triage') {
-    document.getElementById('searchInput').value = '';
-    // Show only draft items by temporarily filtering
-    renderBoard();
-  }
-}
-
-// ── Helpers ──
-function esc(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── Boot ──
 init();
 </script>
 </body>
