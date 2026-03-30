@@ -7,11 +7,11 @@ const PORT = process.env.PORT || 8080;
 
 // ── Database config ──
 const DB_CONFIG = {
-  server: process.env.DB_SERVER || '***REMOVED***',
-  database: process.env.DB_NAME || '1000Problems',
-  user: process.env.DB_USER || '***REMOVED***',
-  password: process.env.DB_PASSWORD || '***REMOVED***',
-  port: 1433,
+  server: process.env.DB_SERVER,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT) || 1433,
   options: { encrypt: true, trustServerCertificate: false }
 };
 
