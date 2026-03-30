@@ -200,6 +200,19 @@ async function migrateSchema() {
   try {
     const tables = ['Vybe_Tasks', 'Vybe_Bugs', 'Vybe_TestCases'];
     for (const tbl of tables) {
+      // Drop any FK constraints referencing Vybe_Areas on this table
+      const fkCheck = await dbPool.request().query(`
+        SELECT fk.name AS fk_name
+        FROM sys.foreign_keys fk
+        JOIN sys.tables t ON fk.parent_object_id = t.object_id
+        JOIN sys.tables rt ON fk.referenced_object_id = rt.object_id
+        WHERE t.name = '${tbl}' AND rt.name = 'Vybe_Areas'
+      `);
+      for (const fk of fkCheck.recordset) {
+        console.log('Dropping old FK constraint:', fk.fk_name, 'on', tbl);
+        await dbPool.request().query(`ALTER TABLE ${tbl} DROP CONSTRAINT [${fk.fk_name}]`);
+      }
+
       // Check if AreaId exists but UserStoryId doesn't
       const colCheck = await dbPool.request().query(`
         SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
