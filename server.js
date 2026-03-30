@@ -54,18 +54,15 @@ async function initDB() {
 
 async function ensureTables() {
   const query = `
-    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vybe_Users')
+    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vybe_LoginKeys')
     BEGIN
-      CREATE TABLE Vybe_Users (
+      CREATE TABLE Vybe_LoginKeys (
         Id INT IDENTITY(1,1) PRIMARY KEY,
-        Username NVARCHAR(50) NOT NULL UNIQUE,
-        Email NVARCHAR(255) NOT NULL UNIQUE,
-        PasswordHash NVARCHAR(128) NOT NULL,
-        PasswordSalt NVARCHAR(64) NOT NULL,
-        DisplayName NVARCHAR(100),
-        Role NVARCHAR(20) DEFAULT 'admin',
-        CreatedDate DATETIME2 DEFAULT GETUTCDATE(),
-        LastLoginDate DATETIME2
+        LoginKey NVARCHAR(20) NOT NULL,
+        DisplayName NVARCHAR(100) DEFAULT 'angel',
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        ExpiresAt DATETIME2 NOT NULL,
+        Used BIT DEFAULT 0
       );
     END
 
@@ -74,10 +71,9 @@ async function ensureTables() {
       CREATE TABLE Vybe_Sessions (
         Id INT IDENTITY(1,1) PRIMARY KEY,
         SessionToken NVARCHAR(128) NOT NULL UNIQUE,
-        UserId INT NOT NULL,
+        DisplayName NVARCHAR(100) NOT NULL,
         CreatedDate DATETIME2 DEFAULT GETUTCDATE(),
-        ExpiresDate DATETIME2 NOT NULL,
-        FOREIGN KEY (UserId) REFERENCES Vybe_Users(Id)
+        ExpiresDate DATETIME2 NOT NULL
       );
       CREATE INDEX IX_Vybe_Sessions_Token ON Vybe_Sessions(SessionToken);
     END
@@ -206,19 +202,12 @@ async function loadFromDB() {
 }
 
 // ══════════════════════════════════════
-// ── AUTH HELPERS ──
+// ── AUTH HELPERS (Claude-as-2FA) ──
 // ══════════════════════════════════════
-
-function hashPassword(password, salt) {
-  if (!salt) salt = crypto.randomBytes(32).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-  return { hash, salt };
-}
-
-function verifyPassword(password, storedHash, storedSalt) {
-  const { hash } = hashPassword(password, storedSalt);
-  return hash === storedHash;
-}
+// No passwords. No registration. Claude generates a one-time key,
+// inserts it into Vybe_LoginKeys with a 10-minute expiry.
+// User types the key on the site → gets a 30-day session cookie.
+// After 10 minutes the key is useless. No key = no login possible.
 
 function generateSessionToken() {
   return crypto.randomBytes(48).toString('hex');
@@ -242,13 +231,11 @@ async function getUserFromSession(req) {
   try {
     const result = await dbPool.request()
       .input('token', sql.NVarChar, token)
-      .query(`
-        SELECT u.Id, u.Username, u.Email, u.DisplayName, u.Role
-        FROM Vybe_Sessions s
-        JOIN Vybe_Users u ON s.UserId = u.Id
-        WHERE s.SessionToken = @token AND s.ExpiresDate > GETUTCDATE()
-      `);
-    return result.recordset[0] || null;
+      .query(`SELECT DisplayName FROM Vybe_Sessions
+              WHERE SessionToken = @token AND ExpiresDate > GETUTCDATE()`);
+    const row = result.recordset[0];
+    if (!row) return null;
+    return { DisplayName: row.DisplayName, Username: row.DisplayName };
   } catch (e) {
     console.error('Session lookup error:', e.message);
     return null;
@@ -323,83 +310,44 @@ async function handleRequest(req, res) {
   // ── AUTH ROUTES ──
   // ══════════════════════════════════════
 
-  if (pathname === '/api/register' && req.method === 'POST') {
-    const { username, email, password } = await parseBody(req);
-    if (!username || !email || !password) return sendJSON(res, 400, { error: 'Missing fields' });
-    if (password.length < 4) return sendJSON(res, 400, { error: 'Password too short' });
-
-    if (dbPool) {
-      try {
-        const existing = await dbPool.request()
-          .input('username', sql.NVarChar, username)
-          .input('email', sql.NVarChar, email)
-          .query('SELECT Id FROM Vybe_Users WHERE Username = @username OR Email = @email');
-        if (existing.recordset.length > 0) return sendJSON(res, 409, { error: 'Username or email taken' });
-
-        const { hash, salt } = hashPassword(password);
-        const result = await dbPool.request()
-          .input('username', sql.NVarChar, username)
-          .input('email', sql.NVarChar, email)
-          .input('hash', sql.NVarChar, hash)
-          .input('salt', sql.NVarChar, salt)
-          .input('display', sql.NVarChar, username)
-          .query(`INSERT INTO Vybe_Users (Username, Email, PasswordHash, PasswordSalt, DisplayName)
-                  OUTPUT INSERTED.Id
-                  VALUES (@username, @email, @hash, @salt, @display)`);
-        const userId = result.recordset[0].Id;
-
-        const token = generateSessionToken();
-        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        await dbPool.request()
-          .input('token', sql.NVarChar, token)
-          .input('userId', sql.Int, userId)
-          .input('expires', sql.DateTime2, expires)
-          .query('INSERT INTO Vybe_Sessions (SessionToken, UserId, ExpiresDate) VALUES (@token, @userId, @expires)');
-
-        res.writeHead(200, {
-          'Content-Type': 'application/json',
-          'Set-Cookie': `vybe_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30*24*60*60}`
-        });
-        return res.end(JSON.stringify({ ok: true, user: { id: userId, username, email, displayName: username } }));
-      } catch (e) {
-        console.error('Register error:', e.message);
-        return sendJSON(res, 500, { error: 'Registration failed' });
-      }
-    }
-    return sendJSON(res, 500, { error: 'Database required' });
-  }
-
+  // POST /api/login — Redeem a one-time key (generated by Claude)
   if (pathname === '/api/login' && req.method === 'POST') {
-    const { username, password } = await parseBody(req);
-    if (!username || !password) return sendJSON(res, 400, { error: 'Missing fields' });
+    const { key } = await parseBody(req);
+    if (!key) return sendJSON(res, 400, { error: 'Key required' });
 
     if (dbPool) {
       try {
+        // Find a valid, unused, non-expired key
         const result = await dbPool.request()
-          .input('username', sql.NVarChar, username)
-          .query('SELECT * FROM Vybe_Users WHERE Username = @username');
-        const user = result.recordset[0];
-        if (!user || !verifyPassword(password, user.PasswordHash, user.PasswordSalt)) {
-          return sendJSON(res, 401, { error: 'Invalid credentials' });
+          .input('key', sql.NVarChar, key.trim())
+          .query(`SELECT * FROM Vybe_LoginKeys
+                  WHERE LoginKey = @key AND Used = 0 AND ExpiresAt > GETUTCDATE()`);
+        const loginKey = result.recordset[0];
+        if (!loginKey) {
+          return sendJSON(res, 401, { error: 'Invalid or expired key' });
         }
 
+        // Mark key as used immediately
+        await dbPool.request()
+          .input('id', sql.Int, loginKey.Id)
+          .query('UPDATE Vybe_LoginKeys SET Used = 1 WHERE Id = @id');
+
+        // Create a 30-day session
         const token = generateSessionToken();
         const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         await dbPool.request()
           .input('token', sql.NVarChar, token)
-          .input('userId', sql.Int, user.Id)
+          .input('name', sql.NVarChar, loginKey.DisplayName || 'angel')
           .input('expires', sql.DateTime2, expires)
-          .query('INSERT INTO Vybe_Sessions (SessionToken, UserId, ExpiresDate) VALUES (@token, @userId, @expires)');
+          .query('INSERT INTO Vybe_Sessions (SessionToken, DisplayName, ExpiresDate) VALUES (@token, @name, @expires)');
 
-        await dbPool.request()
-          .input('id', sql.Int, user.Id)
-          .query('UPDATE Vybe_Users SET LastLoginDate = GETUTCDATE() WHERE Id = @id');
+        await logAudit('Session', 'login', 'key-login', loginKey.DisplayName, null, { keyId: loginKey.Id });
 
         res.writeHead(200, {
           'Content-Type': 'application/json',
           'Set-Cookie': `vybe_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30*24*60*60}`
         });
-        return res.end(JSON.stringify({ ok: true, user: { id: user.Id, username: user.Username, email: user.Email, displayName: user.DisplayName, role: user.Role } }));
+        return res.end(JSON.stringify({ ok: true, user: { displayName: loginKey.DisplayName } }));
       } catch (e) {
         console.error('Login error:', e.message);
         return sendJSON(res, 500, { error: 'Login failed' });

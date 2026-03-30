@@ -243,18 +243,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
 </div>
 
-<!-- ── Auth Modal ── -->
+<!-- ── Auth Modal (Claude-as-2FA) ── -->
 <div class="modal-overlay" id="authModal" style="display:none">
-  <div class="modal">
-    <h2 id="authTitle">Sign In</h2>
+  <div class="modal" style="text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">🔐</div>
+    <h2>Enter Key</h2>
+    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Ask Claude for a login key</p>
     <div class="error" id="authError" style="display:none"></div>
-    <input id="authUsername" placeholder="Username">
-    <input id="authEmail" placeholder="Email" style="display:none">
-    <input id="authPassword" placeholder="Password" type="password">
-    <button class="btn btn-primary" onclick="submitAuth()"><span id="authBtnText">Sign In</span></button>
-    <div class="switch-link">
-      <span id="authSwitch"></span>
-    </div>
+    <input id="authKey" placeholder="Paste your key here" style="text-align:center;font-size:18px;letter-spacing:2px;font-family:monospace" onkeydown="if(event.key==='Enter')submitAuth()">
+    <button class="btn btn-primary" onclick="submitAuth()">Unlock</button>
   </div>
 </div>
 
@@ -318,7 +315,7 @@ let allAreas = [];
 let boardItems = [];
 let selectedEpicId = '';
 let selectedAreaId = '';
-let authMode = 'login'; // or 'register'
+// no authMode needed — single key input
 
 // ── API helper ──
 async function api(url, opts = {}) {
@@ -343,8 +340,8 @@ async function checkAuth() {
     const data = await api('/api/me');
     if (data && data.user) {
       currentUser = data.user;
-      document.getElementById('userDisplay').textContent = currentUser.Username || currentUser.DisplayName;
-      document.getElementById('userAvatar').textContent = (currentUser.Username || '?')[0].toUpperCase();
+      document.getElementById('userDisplay').textContent = currentUser.DisplayName || currentUser.Username || 'user';
+      document.getElementById('userAvatar').textContent = (currentUser.DisplayName || currentUser.Username || '?')[0].toUpperCase();
       document.getElementById('authLabel').textContent = 'Sign Out';
     } else {
       currentUser = null;
@@ -562,7 +559,7 @@ async function updateStatus(id, type, newStatus) {
   await loadBoard();
 }
 
-// ── Auth ──
+// ── Auth (Claude-as-2FA) ──
 function toggleAuth() {
   if (currentUser) {
     api('/api/logout', { method: 'POST' }).then(() => {
@@ -571,45 +568,23 @@ function toggleAuth() {
     });
     return;
   }
-  authMode = 'login';
-  showAuthModal();
-}
-
-function showAuthModal() {
   document.getElementById('authModal').style.display = '';
   document.getElementById('authError').style.display = 'none';
-  document.getElementById('authUsername').value = '';
-  document.getElementById('authPassword').value = '';
-  document.getElementById('authEmail').value = '';
-  if (authMode === 'login') {
-    document.getElementById('authTitle').textContent = 'Sign In';
-    document.getElementById('authBtnText').textContent = 'Sign In';
-    document.getElementById('authEmail').style.display = 'none';
-    document.getElementById('authSwitch').innerHTML = 'No account? <a onclick="authMode=\'register\';showAuthModal()">Register</a>';
-  } else {
-    document.getElementById('authTitle').textContent = 'Register';
-    document.getElementById('authBtnText').textContent = 'Create Account';
-    document.getElementById('authEmail').style.display = '';
-    document.getElementById('authSwitch').innerHTML = 'Have an account? <a onclick="authMode=\'login\';showAuthModal()">Sign In</a>';
-  }
+  document.getElementById('authKey').value = '';
+  document.getElementById('authKey').focus();
 }
 
 async function submitAuth() {
-  const username = document.getElementById('authUsername').value.trim();
-  const password = document.getElementById('authPassword').value;
-  if (!username || !password) { showAuthError('Fill in all fields'); return; }
+  const key = document.getElementById('authKey').value.trim();
+  if (!key) { showAuthError('Paste your key'); return; }
 
-  const url = authMode === 'login' ? '/api/login' : '/api/register';
-  const body = { username, password };
-  if (authMode === 'register') body.email = document.getElementById('authEmail').value.trim();
-
-  const data = await api(url, { method: 'POST', body });
+  const data = await api('/api/login', { method: 'POST', body: { key } });
   if (data && data.ok) {
     document.getElementById('authModal').style.display = 'none';
     await checkAuth();
     await loadBoard();
   } else {
-    showAuthError(data?.error || 'Failed');
+    showAuthError(data?.error || 'Invalid or expired key');
   }
 }
 
