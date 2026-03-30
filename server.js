@@ -17,6 +17,7 @@ const DB_CONFIG = {
 
 let sql;
 let dbPool = null;
+let claudeApiKey = null;
 
 // ── In-memory caches (loaded from DB at startup) ──
 let epics = [];
@@ -197,6 +198,16 @@ async function ensureTables() {
       );
       CREATE INDEX IX_Vybe_AuditLog_Entity ON Vybe_AuditLog(EntityType, EntityId);
     END
+
+    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vybe_Settings')
+    BEGIN
+      CREATE TABLE Vybe_Settings (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        SettingKey NVARCHAR(100) NOT NULL UNIQUE,
+        SettingValue NVARCHAR(MAX),
+        UpdatedAt DATETIME2 DEFAULT SYSUTCDATETIME()
+      );
+    END
   `;
   try {
     await dbPool.request().query(query);
@@ -237,6 +248,21 @@ async function migrateSchema() {
         console.log(`Migrating ${tbl}: adding UserStoryId column`);
         await dbPool.request().query(`ALTER TABLE ${tbl} ADD UserStoryId UNIQUEIDENTIFIER NULL`);
       }
+
+      // Add AiOutput and AiCompletedAt columns if they don't exist
+      const aiColCheck = await dbPool.request().query(`
+        SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = '${tbl}' AND COLUMN_NAME IN ('AiOutput','AiCompletedAt')
+      `);
+      const aiCols = aiColCheck.recordset.map(r => r.COLUMN_NAME);
+      if (!aiCols.includes('AiOutput')) {
+        console.log(`Adding AiOutput column to ${tbl}`);
+        await dbPool.request().query(`ALTER TABLE ${tbl} ADD AiOutput NVARCHAR(MAX)`);
+      }
+      if (!aiCols.includes('AiCompletedAt')) {
+        console.log(`Adding AiCompletedAt column to ${tbl}`);
+        await dbPool.request().query(`ALTER TABLE ${tbl} ADD AiCompletedAt DATETIME2`);
+      }
     }
     console.log('Schema migration complete');
   } catch (e) {
@@ -248,18 +274,24 @@ async function migrateSchema() {
 async function loadFromDB() {
   if (!dbPool) return;
   try {
-    const [e, s, b, t, tc] = await Promise.all([
+    const [e, s, b, t, tc, settings] = await Promise.all([
       dbPool.request().query('SELECT * FROM Vybe_Epics ORDER BY CreatedAt DESC'),
       dbPool.request().query('SELECT * FROM Vybe_UserStories ORDER BY CreatedAt DESC'),
       dbPool.request().query('SELECT * FROM Vybe_Bugs ORDER BY CreatedAt DESC'),
       dbPool.request().query('SELECT * FROM Vybe_Tasks ORDER BY CreatedAt DESC'),
       dbPool.request().query('SELECT * FROM Vybe_TestCases ORDER BY CreatedAt DESC'),
+      dbPool.request().query(`SELECT SettingValue FROM Vybe_Settings WHERE SettingKey='claude_api_key'`),
     ]);
     epics = e.recordset;
     stories = s.recordset;
     bugs = b.recordset;
     tasks = t.recordset;
     testcases = tc.recordset;
+    const settingRow = settings.recordset[0];
+    if (settingRow && settingRow.SettingValue) {
+      claudeApiKey = settingRow.SettingValue;
+      console.log('Loaded Claude API key from settings');
+    }
     console.log(`Loaded: ${epics.length} epics, ${stories.length} stories, ${bugs.length} bugs, ${tasks.length} tasks, ${testcases.length} testcases`);
   } catch (e) {
     console.error('Load error:', e.message);
@@ -351,6 +383,211 @@ async function logAudit(entityType, entityId, action, actor, prev, next) {
 }
 
 // ══════════════════════════════════════
+// ── CLAUDE INTEGRATION ──
+// ══════════════════════════════════════
+
+function buildClaudePrompt(item, story) {
+  if (item._type === 'task') {
+    return `You are an AI developer. Implement the following task...
+
+Project Story: ${story.Title}
+Story Description: ${story.Description}
+Acceptance Criteria: ${story.AcceptanceCriteria}
+
+Task: ${item.Title}
+Spec: ${item.Spec}
+
+Provide a complete implementation with code and explanation.`;
+  } else if (item._type === 'bug') {
+    return `You are an AI developer. Diagnose and fix the following bug...
+
+Project Story: ${story.Title}
+Story Description: ${story.Description}
+Acceptance Criteria: ${story.AcceptanceCriteria}
+
+Bug: ${item.Title}
+Spec: ${item.Spec}
+
+Provide root cause analysis and a fix with code.`;
+  } else if (item._type === 'testcase') {
+    return `You are a QA engineer. Write test scenarios for...
+
+Project Story: ${story.Title}
+Story Description: ${story.Description}
+Acceptance Criteria: ${story.AcceptanceCriteria}
+
+Test Case: ${item.Title}
+Spec: ${item.Spec}
+
+Provide detailed test scripts with steps and expected results.`;
+  }
+  return '';
+}
+
+async function aiWorkerTick() {
+  if (!dbPool || !claudeApiKey) return;
+
+  // Check if any item is already in progress
+  const inProgress = [...bugs, ...tasks, ...testcases].find(i => i.Status === 'ai-in-progress');
+  if (inProgress) return;
+
+  // Find the highest-priority triaged item
+  let nextItem = null;
+  let itemType = null;
+
+  const priorityOrder = { P0: 0, P1: 1, P2: 2, P3: 3 };
+  const allTriaged = [
+    ...bugs.filter(b => b.Status === 'triaged').map(b => ({ ...b, _type: 'bug' })),
+    ...tasks.filter(t => t.Status === 'triaged').map(t => ({ ...t, _type: 'task' })),
+    ...testcases.filter(tc => tc.Status === 'triaged').map(tc => ({ ...tc, _type: 'testcase' })),
+  ];
+
+  if (allTriaged.length === 0) return;
+
+  // Sort by priority (lower number = higher priority)
+  allTriaged.sort((a, b) => {
+    const aStory = stories.find(s => String(s.Id) === String(a.UserStoryId));
+    const bStory = stories.find(s => String(s.Id) === String(b.UserStoryId));
+    const aPri = priorityOrder[aStory?.Priority] || 9;
+    const bPri = priorityOrder[bStory?.Priority] || 9;
+    if (aPri !== bPri) return aPri - bPri;
+    const aItemPri = priorityOrder[a.Priority] || 9;
+    const bItemPri = priorityOrder[b.Priority] || 9;
+    if (aItemPri !== bItemPri) return aItemPri - bItemPri;
+    return new Date(a.CreatedAt) - new Date(b.CreatedAt);
+  });
+
+  nextItem = allTriaged[0];
+  itemType = nextItem._type;
+
+  // Update to ai-in-progress in DB and cache
+  const table = itemType === 'bug' ? 'Vybe_Bugs' : itemType === 'task' ? 'Vybe_Tasks' : 'Vybe_TestCases';
+  try {
+    const result = await dbPool.request()
+      .input('id', sql.UniqueIdentifier, nextItem.Id)
+      .input('assignedTo', sql.NVarChar, 'claude-ai')
+      .query(`UPDATE ${table} SET Status='ai-in-progress', AssignedTo=@assignedTo OUTPUT INSERTED.* WHERE Id=@id`);
+    if (result.recordset[0]) {
+      const cache = itemType === 'bug' ? bugs : itemType === 'task' ? tasks : testcases;
+      const idx = cache.findIndex(i => String(i.Id) === String(nextItem.Id));
+      if (idx >= 0) cache[idx] = result.recordset[0];
+    }
+  } catch (e) {
+    console.error('Failed to update item to ai-in-progress:', e.message);
+    return;
+  }
+
+  // Get parent story
+  const parentStory = stories.find(s => String(s.Id) === String(nextItem.UserStoryId));
+  if (!parentStory) {
+    console.error('Parent story not found for item', nextItem.Id);
+    return;
+  }
+
+  // Call Claude API
+  const prompt = buildClaudePrompt(nextItem, parentStory);
+  const https = require('https');
+
+  const requestBody = JSON.stringify({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    messages: [
+      {
+        role: 'user',
+        content: prompt
+      }
+    ]
+  });
+
+  const options = {
+    hostname: 'api.anthropic.com',
+    port: 443,
+    path: '/v1/messages',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(requestBody),
+      'x-api-key': claudeApiKey,
+      'anthropic-version': '2023-06-01'
+    }
+  };
+
+  const req = https.request(options, (res) => {
+    let responseData = '';
+    res.on('data', chunk => { responseData += chunk; });
+    res.on('end', async () => {
+      try {
+        const parsed = JSON.parse(responseData);
+        if (res.statusCode === 200 && parsed.content && parsed.content[0]) {
+          const aiOutput = parsed.content[0].text;
+          const newStatus = itemType === 'testcase' ? 'pass' : 'ai-done';
+          const updateResult = await dbPool.request()
+            .input('id', sql.UniqueIdentifier, nextItem.Id)
+            .input('aiOutput', sql.NVarChar, aiOutput)
+            .input('aiCompletedAt', sql.DateTime2, new Date())
+            .input('status', sql.NVarChar, newStatus)
+            .query(`UPDATE ${table} SET AiOutput=@aiOutput, AiCompletedAt=@aiCompletedAt, Status=@status OUTPUT INSERTED.* WHERE Id=@id`);
+
+          if (updateResult.recordset[0]) {
+            const cache = itemType === 'bug' ? bugs : itemType === 'task' ? tasks : testcases;
+            const idx = cache.findIndex(i => String(i.Id) === String(nextItem.Id));
+            if (idx >= 0) cache[idx] = updateResult.recordset[0];
+          }
+          console.log(`AI completed ${itemType} ${nextItem.Id}`);
+        } else {
+          const errorMsg = `[ERROR] Claude API error: ${parsed.error?.message || 'Unknown error'}`;
+          const updateResult = await dbPool.request()
+            .input('id', sql.UniqueIdentifier, nextItem.Id)
+            .input('aiOutput', sql.NVarChar, errorMsg)
+            .query(`UPDATE ${table} SET AiOutput=@aiOutput, Status='blocked' OUTPUT INSERTED.* WHERE Id=@id`);
+
+          if (updateResult.recordset[0]) {
+            const cache = itemType === 'bug' ? bugs : itemType === 'task' ? tasks : testcases;
+            const idx = cache.findIndex(i => String(i.Id) === String(nextItem.Id));
+            if (idx >= 0) cache[idx] = updateResult.recordset[0];
+          }
+          console.error('Claude API error:', parsed.error?.message || responseData);
+        }
+      } catch (e) {
+        const errorMsg = `[ERROR] ${e.message}`;
+        try {
+          const updateResult = await dbPool.request()
+            .input('id', sql.UniqueIdentifier, nextItem.Id)
+            .input('aiOutput', sql.NVarChar, errorMsg)
+            .query(`UPDATE ${table} SET AiOutput=@aiOutput, Status='blocked' OUTPUT INSERTED.* WHERE Id=@id`);
+
+          if (updateResult.recordset[0]) {
+            const cache = itemType === 'bug' ? bugs : itemType === 'task' ? tasks : testcases;
+            const idx = cache.findIndex(i => String(i.Id) === String(nextItem.Id));
+            if (idx >= 0) cache[idx] = updateResult.recordset[0];
+          }
+        } catch (e2) { console.error('Failed to update blocked status:', e2.message); }
+      }
+    });
+  });
+
+  req.on('error', async (e) => {
+    const errorMsg = `[ERROR] ${e.message}`;
+    try {
+      const updateResult = await dbPool.request()
+        .input('id', sql.UniqueIdentifier, nextItem.Id)
+        .input('aiOutput', sql.NVarChar, errorMsg)
+        .query(`UPDATE ${table} SET AiOutput=@aiOutput, Status='blocked' OUTPUT INSERTED.* WHERE Id=@id`);
+
+      if (updateResult.recordset[0]) {
+        const cache = itemType === 'bug' ? bugs : itemType === 'task' ? tasks : testcases;
+        const idx = cache.findIndex(i => String(i.Id) === String(nextItem.Id));
+        if (idx >= 0) cache[idx] = updateResult.recordset[0];
+      }
+    } catch (e2) { console.error('Failed to update blocked status:', e2.message); }
+    console.error('Claude API request error:', e.message);
+  });
+
+  req.write(requestBody);
+  req.end();
+}
+
+// ══════════════════════════════════════
 // ── REQUEST HANDLER ──
 // ══════════════════════════════════════
 
@@ -413,6 +650,90 @@ async function handleRequest(req, res) {
     if (token && dbPool) await dbPool.request().input('token', sql.NVarChar, token).query('DELETE FROM Vybe_Sessions WHERE SessionToken = @token');
     res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'vybe_session=; Path=/; HttpOnly; Max-Age=0' });
     return res.end(JSON.stringify({ ok: true }));
+  }
+
+  // ══════════════════════════════════════
+  // ── SETTINGS ──
+  // ══════════════════════════════════════
+
+  if (pathname === '/api/settings/apikey' && req.method === 'GET') {
+    return sendJSON(res, 200, { configured: !!claudeApiKey });
+  }
+
+  if (pathname === '/api/settings/apikey' && req.method === 'POST') {
+    const user = await getUserFromSession(req);
+    if (!user) return sendJSON(res, 401, { error: 'Not logged in' });
+    if (!dbPool) return sendJSON(res, 500, { error: 'Database required' });
+    const { apiKey } = await parseBody(req);
+    if (!apiKey) return sendJSON(res, 400, { error: 'apiKey required' });
+    try {
+      // Insert or update the setting
+      await dbPool.request()
+        .input('key', sql.NVarChar, 'claude_api_key')
+        .input('value', sql.NVarChar, apiKey)
+        .query(`
+          MERGE INTO Vybe_Settings AS target
+          USING (SELECT @key AS SettingKey, @value AS SettingValue) AS source
+          ON target.SettingKey = source.SettingKey
+          WHEN MATCHED THEN UPDATE SET SettingValue = source.SettingValue, UpdatedAt = SYSUTCDATETIME()
+          WHEN NOT MATCHED THEN INSERT (SettingKey, SettingValue) VALUES (source.SettingKey, source.SettingValue);
+        `);
+      claudeApiKey = apiKey;
+      return sendJSON(res, 200, { ok: true });
+    } catch (e) {
+      return sendJSON(res, 500, { error: e.message });
+    }
+  }
+
+  if (pathname === '/api/settings/apikey/test' && req.method === 'POST') {
+    const user = await getUserFromSession(req);
+    if (!user) return sendJSON(res, 401, { error: 'Not logged in' });
+    if (!claudeApiKey) return sendJSON(res, 400, { error: 'No API key configured' });
+
+    const https = require('https');
+    const requestBody = JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 10,
+      messages: [{ role: 'user', content: 'Say hi' }]
+    });
+
+    const options = {
+      hostname: 'api.anthropic.com',
+      port: 443,
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(requestBody),
+        'x-api-key': claudeApiKey,
+        'anthropic-version': '2023-06-01'
+      }
+    };
+
+    const req2 = https.request(options, (res2) => {
+      let responseData = '';
+      res2.on('data', chunk => { responseData += chunk; });
+      res2.on('end', () => {
+        try {
+          const parsed = JSON.parse(responseData);
+          if (res2.statusCode === 200) {
+            return sendJSON(res, 200, { ok: true });
+          } else {
+            return sendJSON(res, 400, { ok: false, error: parsed.error?.message || 'API test failed' });
+          }
+        } catch (e) {
+          return sendJSON(res, 500, { ok: false, error: e.message });
+        }
+      });
+    });
+
+    req2.on('error', (e) => {
+      return sendJSON(res, 500, { ok: false, error: e.message });
+    });
+
+    req2.write(requestBody);
+    req2.end();
+    return;
   }
 
   // ══════════════════════════════════════
@@ -590,7 +911,9 @@ async function handleRequest(req, res) {
           .input('priority', sql.NVarChar, body.priority || prev.Priority)
           .input('status', sql.NVarChar, body.status || prev.Status)
           .input('lastResult', sql.NVarChar, body.lastResult !== undefined ? body.lastResult : prev.LastResult)
-          .query(`UPDATE Vybe_TestCases SET Title=@title, Spec=@spec, Priority=@priority, Status=@status, LastResult=@lastResult OUTPUT INSERTED.* WHERE Id=@id`);
+          .input('aiOutput', sql.NVarChar, body.aiOutput !== undefined ? body.aiOutput : prev.AiOutput)
+          .input('aiCompletedAt', sql.DateTime2, body.aiCompletedAt !== undefined ? body.aiCompletedAt : prev.AiCompletedAt)
+          .query(`UPDATE Vybe_TestCases SET Title=@title, Spec=@spec, Priority=@priority, Status=@status, LastResult=@lastResult, AiOutput=@aiOutput, AiCompletedAt=@aiCompletedAt OUTPUT INSERTED.* WHERE Id=@id`);
       } else {
         result = await dbPool.request()
           .input('id', sql.UniqueIdentifier, id)
@@ -601,7 +924,9 @@ async function handleRequest(req, res) {
           .input('resolution', sql.NVarChar, body.resolution !== undefined ? body.resolution : prev.Resolution)
           .input('assignedTo', sql.NVarChar, body.assignedTo !== undefined ? body.assignedTo : prev.AssignedTo)
           .input('closedAt', sql.DateTime2, body.status === 'closed' ? new Date() : prev.ClosedAt)
-          .query(`UPDATE ${table} SET Title=@title, Spec=@spec, Priority=@priority, Status=@status, Resolution=@resolution, AssignedTo=@assignedTo, ClosedAt=@closedAt OUTPUT INSERTED.* WHERE Id=@id`);
+          .input('aiOutput', sql.NVarChar, body.aiOutput !== undefined ? body.aiOutput : prev.AiOutput)
+          .input('aiCompletedAt', sql.DateTime2, body.aiCompletedAt !== undefined ? body.aiCompletedAt : prev.AiCompletedAt)
+          .query(`UPDATE ${table} SET Title=@title, Spec=@spec, Priority=@priority, Status=@status, Resolution=@resolution, AssignedTo=@assignedTo, ClosedAt=@closedAt, AiOutput=@aiOutput, AiCompletedAt=@aiCompletedAt OUTPUT INSERTED.* WHERE Id=@id`);
       }
       const item = result.recordset[0];
       const idx = cache.findIndex(i => String(i.Id) === id);
@@ -854,6 +1179,8 @@ const server = http.createServer(handleRequest);
 
 initDB().then(async () => {
   await loadFromDB();
+  // Start AI worker loop
+  setInterval(aiWorkerTick, 30000);
   server.listen(PORT, () => {
     console.log(`Vybe PM running on port ${PORT}`);
   });
