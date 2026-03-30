@@ -1,0 +1,7 @@
+{
+  "name": "vybe-program-manager",
+  "version": "1.0.0",
+  "description": "Vybe Program Manager - A 1000Problems project",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" }
+}
