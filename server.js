@@ -29,27 +29,38 @@ let testcases = [];
 // ── DATABASE INIT ──
 // ══════════════════════════════════════
 
-async function initDB() {
-  try {
-    sql = require('mssql');
-    dbPool = await sql.connect({
-      server: DB_CONFIG.server,
-      database: DB_CONFIG.database,
-      user: DB_CONFIG.user,
-      password: DB_CONFIG.password,
-      port: DB_CONFIG.port,
-      options: DB_CONFIG.options,
-      pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
-      requestTimeout: 15000
-    });
-    console.log('Connected to Azure SQL');
-    await ensureTables();
-    await migrateSchema();
-    return true;
-  } catch (e) {
-    console.log('DB not available, running in memory mode:', e.message);
-    return false;
+async function initDB(retries = 3) {
+  sql = require('mssql');
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`DB connection attempt ${attempt}/${retries}...`);
+      dbPool = await sql.connect({
+        server: DB_CONFIG.server,
+        database: DB_CONFIG.database,
+        user: DB_CONFIG.user,
+        password: DB_CONFIG.password,
+        port: DB_CONFIG.port,
+        options: DB_CONFIG.options,
+        pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
+        requestTimeout: 30000,
+        connectionTimeout: 60000
+      });
+      console.log('Connected to Azure SQL');
+      await ensureTables();
+      await migrateSchema();
+      return true;
+    } catch (e) {
+      console.log(`DB attempt ${attempt} failed: ${e.message}`);
+      if (attempt < retries) {
+        console.log('Waiting 15s before retry (DB may be waking from auto-pause)...');
+        await new Promise(r => setTimeout(r, 15000));
+        // Close any partial pool before retrying
+        try { await sql.close(); } catch (_) {}
+      }
+    }
   }
+  console.log('All DB attempts failed, running in memory mode');
+  return false;
 }
 
 async function ensureTables() {
