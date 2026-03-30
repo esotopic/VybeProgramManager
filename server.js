@@ -350,6 +350,29 @@ async function handleRequest(req, res) {
     const { key } = await parseBody(req);
     if (!key) return sendJSON(res, 400, { error: 'Key required' });
 
+    // Hardcoded master passkey — no expiry, no DB lookup needed
+    const MASTER_KEY = '***REMOVED***';
+    if (key.trim() === MASTER_KEY && dbPool) {
+      try {
+        const token = generateSessionToken();
+        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await dbPool.request()
+          .input('token', sql.NVarChar, token)
+          .input('name', sql.NVarChar, 'angel')
+          .input('expires', sql.DateTime2, expires)
+          .query('INSERT INTO Vybe_Sessions (SessionToken, DisplayName, ExpiresDate) VALUES (@token, @name, @expires)');
+        await logAudit('Session', 'login', 'master-key', 'angel', null, {});
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Set-Cookie': `vybe_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30*24*60*60}`
+        });
+        return res.end(JSON.stringify({ ok: true, user: { displayName: 'angel' } }));
+      } catch (e) {
+        console.error('Master key login error:', e.message);
+        return sendJSON(res, 500, { error: 'Login failed' });
+      }
+    }
+
     if (dbPool) {
       try {
         // Find a valid, unused, non-expired key
