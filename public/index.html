@@ -3,42 +3,732 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vybe Program Manager</title>
+<title>Vybe PM</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a1a;font-family:'Segoe UI',system-ui,sans-serif;color:#fff;overflow:hidden}
-.bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0}
-.bg .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.4;animation:float 8s ease-in-out infinite}
-.bg .orb:nth-child(1){width:400px;height:400px;background:linear-gradient(135deg,#7c3aed,#06b6d4);top:-100px;left:-100px;animation-delay:0s}
-.bg .orb:nth-child(2){width:350px;height:350px;background:linear-gradient(135deg,#ec4899,#f59e0b);bottom:-80px;right:-80px;animation-delay:-3s}
-.bg .orb:nth-child(3){width:250px;height:250px;background:linear-gradient(135deg,#10b981,#3b82f6);top:50%;left:60%;animation-delay:-5s}
-@keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-40px) scale(1.05)}}
-.content{position:relative;z-index:1;text-align:center;padding:2rem}
-.logo{font-size:4rem;font-weight:800;background:linear-gradient(135deg,#7c3aed,#06b6d4,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.5rem;animation:glow 3s ease-in-out infinite alternate}
-@keyframes glow{0%{filter:brightness(1)}100%{filter:brightness(1.3)}}
-.tagline{font-size:1.3rem;color:rgba(255,255,255,.7);margin-bottom:2.5rem;letter-spacing:.5px}
-.btn{display:inline-block;padding:14px 40px;border:2px solid rgba(124,58,237,.6);border-radius:50px;color:#c4b5fd;font-size:1rem;text-decoration:none;transition:all .3s;cursor:pointer;background:rgba(124,58,237,.1);backdrop-filter:blur(10px);animation:pulse 2s ease-in-out infinite}
-.btn:hover{background:rgba(124,58,237,.3);border-color:#7c3aed;color:#fff;transform:scale(1.05)}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.4)}50%{box-shadow:0 0 20px 5px rgba(124,58,237,.2)}}
-.footer{position:fixed;bottom:2rem;z-index:1;color:rgba(255,255,255,.3);font-size:.85rem}
-.footer a{color:rgba(255,255,255,.5);text-decoration:none}
-.particles{position:fixed;width:100%;height:100%;z-index:0;overflow:hidden}
-.particle{position:absolute;width:3px;height:3px;background:#7c3aed;border-radius:50%;opacity:.5;animation:rise linear infinite}
-@keyframes rise{0%{transform:translateY(100vh) scale(0);opacity:0}50%{opacity:.8}100%{transform:translateY(-10vh) scale(1);opacity:0}}
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --border: #e0e0e0;
+  --text: #1a1a1a;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --accent: #0078d4;
+  --accent-light: #e8f4fd;
+  --danger: #d32f2f;
+  --success: #2e7d32;
+  --warning: #f57c00;
+  --purple: #7b1fa2;
+  --sidebar-bg: #fafafa;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --col-draft: #9e9e9e;
+  --col-triaged: #0078d4;
+  --col-working: #f57c00;
+  --col-done: #2e7d32;
+  --col-closed: #4a4a4a;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── Top Nav ── */
+.topnav { display:flex; align-items:center; background:var(--surface); border-bottom:1px solid var(--border); height:48px; padding:0 16px; gap:12px; flex-shrink:0; }
+.topnav .logo { font-weight:700; font-size:18px; color:var(--accent); letter-spacing:-0.5px; }
+.topnav .breadcrumb { color:var(--text-secondary); font-size:13px; display:flex; align-items:center; gap:6px; }
+.topnav .breadcrumb select { border:none; background:transparent; font-size:13px; color:var(--text); font-weight:500; cursor:pointer; padding:2px 4px; }
+.topnav .spacer { flex:1; }
+.topnav .user-area { display:flex; align-items:center; gap:8px; font-size:13px; }
+.topnav .avatar { width:28px; height:28px; border-radius:50%; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; }
+
+/* ── Layout ── */
+.app-layout { display:flex; flex:1; overflow:hidden; }
+
+/* ── Sidebar ── */
+.sidebar { width:200px; background:var(--sidebar-bg); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+.sidebar .nav-section { padding:12px 0; }
+.sidebar .nav-item { display:flex; align-items:center; gap:8px; padding:6px 16px; font-size:13px; color:var(--text-secondary); cursor:pointer; transition:all 0.15s; }
+.sidebar .nav-item:hover { background:var(--border); color:var(--text); }
+.sidebar .nav-item.active { background:var(--accent-light); color:var(--accent); font-weight:500; }
+.sidebar .nav-item .badge { margin-left:auto; background:var(--danger); color:white; font-size:10px; padding:1px 6px; border-radius:8px; font-weight:600; }
+.sidebar .nav-label { font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); padding:12px 16px 4px; font-weight:600; }
+.sidebar .epic-item { display:flex; align-items:center; gap:6px; padding:4px 16px 4px 24px; font-size:12px; color:var(--text-secondary); cursor:pointer; }
+.sidebar .epic-item:hover { color:var(--accent); }
+.sidebar .epic-item.active { color:var(--accent); font-weight:500; }
+
+/* ── Main Content ── */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── Board Toolbar ── */
+.board-toolbar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+.board-toolbar .search { border:1px solid var(--border); border-radius:4px; padding:5px 10px; font-size:13px; width:220px; outline:none; }
+.board-toolbar .search:focus { border-color:var(--accent); }
+.area-filters { display:flex; gap:4px; flex:1; overflow-x:auto; }
+.area-pill { padding:3px 10px; border-radius:12px; font-size:11px; border:1px solid var(--border); background:var(--surface); cursor:pointer; white-space:nowrap; transition:all 0.15s; }
+.area-pill:hover { border-color:var(--accent); }
+.area-pill.active { background:var(--accent); color:white; border-color:var(--accent); }
+.btn { padding:5px 12px; border-radius:4px; font-size:13px; cursor:pointer; border:none; font-weight:500; transition:all 0.15s; }
+.btn-primary { background:var(--accent); color:white; }
+.btn-primary:hover { background:#006abc; }
+.btn-ghost { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--bg); }
+
+/* ── Board Columns ── */
+.board { display:flex; flex:1; overflow-x:auto; padding:12px; gap:10px; }
+.column { min-width:240px; flex:1; display:flex; flex-direction:column; background:var(--surface); border-radius:6px; border:1px solid var(--border); overflow:hidden; }
+.column-header { padding:10px 12px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:8px; border-bottom:2px solid var(--border); }
+.column-header .dot { width:8px; height:8px; border-radius:50%; }
+.column-header .count { margin-left:auto; background:var(--bg); padding:1px 6px; border-radius:8px; font-size:11px; color:var(--text-muted); }
+.column-body { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:6px; }
+
+/* ── Cards ── */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:10px; cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; }
+.card:hover { box-shadow:var(--card-shadow); border-color:#ccc; }
+.card.type-bug { border-left-color:var(--danger); }
+.card.type-task { border-left-color:var(--accent); }
+.card.type-testcase { border-left-color:var(--success); }
+.card.blocked { border-left-color:var(--danger); background:#fff5f5; }
+.card .card-top { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.card .type-badge { font-size:9px; font-weight:700; text-transform:uppercase; padding:1px 5px; border-radius:2px; color:white; }
+.card .type-badge.bug { background:var(--danger); }
+.card .type-badge.task { background:var(--accent); }
+.card .type-badge.testcase { background:var(--success); }
+.card .priority { font-size:10px; font-weight:700; padding:1px 4px; border-radius:2px; }
+.card .priority.P0 { background:#ffebee; color:var(--danger); }
+.card .priority.P1 { background:#fff3e0; color:var(--warning); }
+.card .priority.P2 { background:#e8f4fd; color:var(--accent); }
+.card .priority.P3 { background:var(--bg); color:var(--text-muted); }
+.card .card-title { font-size:13px; font-weight:500; line-height:1.3; margin-bottom:6px; }
+.card .card-footer { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); }
+.card .area-tag { background:var(--bg); padding:1px 6px; border-radius:2px; font-size:10px; }
+.card .agent-status { display:flex; align-items:center; gap:4px; margin-left:auto; color:var(--purple); font-weight:500; }
+.card .agent-dot { width:6px; height:6px; border-radius:50%; background:var(--purple); animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* ── Detail Panel ── */
+.detail-overlay { position:fixed; top:0; right:0; bottom:0; left:0; background:rgba(0,0,0,0.2); display:none; z-index:100; }
+.detail-overlay.open { display:flex; justify-content:flex-end; }
+.detail-panel { width:520px; max-width:90vw; background:var(--surface); height:100%; display:flex; flex-direction:column; box-shadow:-4px 0 20px rgba(0,0,0,0.1); }
+.detail-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+.detail-header .close-btn { width:28px; height:28px; border:none; background:none; cursor:pointer; font-size:18px; color:var(--text-muted); border-radius:4px; }
+.detail-header .close-btn:hover { background:var(--bg); }
+.detail-body { flex:1; overflow-y:auto; padding:20px; }
+.detail-body .field { margin-bottom:16px; }
+.detail-body .field-label { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:4px; font-weight:600; }
+.detail-body .field-value { font-size:14px; }
+.detail-body .field-value.mono { font-family:'Menlo','Consolas',monospace; font-size:12px; background:var(--bg); padding:10px; border-radius:4px; white-space:pre-wrap; border:1px solid var(--border); max-height:300px; overflow-y:auto; }
+.detail-body .status-pill { display:inline-block; padding:2px 10px; border-radius:10px; font-size:12px; font-weight:500; color:white; }
+.status-draft { background:var(--col-draft); }
+.status-triaged { background:var(--col-triaged); }
+.status-ai-in-progress { background:var(--col-working); }
+.status-ai-done { background:var(--col-done); }
+.status-blocked { background:var(--danger); }
+.status-closed { background:var(--col-closed); }
+.status-pass { background:var(--success); }
+.status-fail { background:var(--danger); }
+.detail-body .audit-entry { padding:8px 0; border-bottom:1px solid var(--bg); font-size:12px; display:flex; gap:8px; }
+.detail-body .audit-entry .audit-time { color:var(--text-muted); min-width:80px; }
+.detail-body .audit-entry .audit-actor { font-weight:500; min-width:60px; }
+.detail-actions { padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; }
+.detail-actions select { padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:13px; }
+
+/* ── Auth Modal ── */
+.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:200; }
+.modal { background:var(--surface); border-radius:8px; padding:32px; width:360px; max-width:90vw; }
+.modal h2 { font-size:20px; margin-bottom:16px; }
+.modal input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:4px; font-size:14px; margin-bottom:10px; outline:none; }
+.modal input:focus { border-color:var(--accent); }
+.modal .btn { width:100%; padding:10px; font-size:14px; }
+.modal .switch-link { text-align:center; margin-top:12px; font-size:13px; color:var(--text-secondary); }
+.modal .switch-link a { color:var(--accent); cursor:pointer; text-decoration:none; }
+.modal .error { color:var(--danger); font-size:13px; margin-bottom:8px; }
+
+/* ── Create Modal ── */
+.create-modal input, .create-modal textarea, .create-modal select { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:4px; font-size:14px; margin-bottom:10px; outline:none; font-family:inherit; }
+.create-modal textarea { min-height:120px; resize:vertical; }
+.create-modal select { cursor:pointer; }
+
+/* ── Empty state ── */
+.empty { padding:40px; text-align:center; color:var(--text-muted); font-size:13px; }
 </style>
 </head>
 <body>
-<div class="bg"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
-<div class="particles"></div>
-<div class="content">
-<div class="logo">Vybe</div>
-<div class="tagline">Program Manager</div>
-<a class="btn">Coming Soon</a>
+
+<!-- ── Top Nav ── -->
+<div class="topnav">
+  <div class="logo">VYBE</div>
+  <div class="breadcrumb">
+    <span>/</span>
+    <select id="epicSelect" onchange="switchEpic(this.value)">
+      <option value="">All Projects</option>
+    </select>
+  </div>
+  <div class="spacer"></div>
+  <div class="user-area" id="userArea">
+    <span id="userDisplay"></span>
+    <div class="avatar" id="userAvatar"></div>
+  </div>
 </div>
-<div class="footer">a <a href="https://www.1000problems.com">1000Problems</a> project</div>
+
+<!-- ── Layout ── -->
+<div class="app-layout">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="nav-section">
+      <div class="nav-item active" data-view="board" onclick="switchView('board')">
+        <span>📋</span> Board
+      </div>
+      <div class="nav-item" data-view="backlog" onclick="switchView('backlog')">
+        <span>📝</span> Backlog
+      </div>
+      <div class="nav-item" data-view="triage" onclick="switchView('triage')">
+        <span>🔍</span> Triage <span class="badge" id="triageBadge" style="display:none">0</span>
+      </div>
+    </div>
+    <div class="nav-label">Projects</div>
+    <div id="epicList"></div>
+    <div style="flex:1"></div>
+    <div class="nav-section" style="border-top:1px solid var(--border)">
+      <div class="nav-item" onclick="showCreateEpic()">
+        <span>➕</span> New Project
+      </div>
+      <div class="nav-item" id="authNavItem" onclick="toggleAuth()">
+        <span>👤</span> <span id="authLabel">Sign In</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="board-toolbar">
+      <input class="search" placeholder="Search items..." id="searchInput" oninput="renderBoard()">
+      <div class="area-filters" id="areaFilters"></div>
+      <button class="btn btn-primary" onclick="showCreateItem()">+ New Item</button>
+    </div>
+
+    <!-- Board View -->
+    <div class="board" id="boardView">
+      <div class="column" id="col-draft">
+        <div class="column-header"><div class="dot" style="background:var(--col-draft)"></div>Draft<span class="count" id="count-draft">0</span></div>
+        <div class="column-body" id="body-draft"></div>
+      </div>
+      <div class="column" id="col-triaged">
+        <div class="column-header"><div class="dot" style="background:var(--col-triaged)"></div>Triaged<span class="count" id="count-triaged">0</span></div>
+        <div class="column-body" id="body-triaged"></div>
+      </div>
+      <div class="column" id="col-ai-in-progress">
+        <div class="column-header"><div class="dot" style="background:var(--col-working)"></div>AI Working<span class="count" id="count-ai-in-progress">0</span></div>
+        <div class="column-body" id="body-ai-in-progress"></div>
+      </div>
+      <div class="column" id="col-ai-done">
+        <div class="column-header"><div class="dot" style="background:var(--col-done)"></div>AI Done<span class="count" id="count-ai-done">0</span></div>
+        <div class="column-body" id="body-ai-done"></div>
+      </div>
+      <div class="column" id="col-closed">
+        <div class="column-header"><div class="dot" style="background:var(--col-closed)"></div>Closed<span class="count" id="count-closed">0</span></div>
+        <div class="column-body" id="body-closed"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Detail Panel ── -->
+<div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-panel">
+    <div class="detail-header">
+      <button class="close-btn" onclick="closeDetail()">&times;</button>
+      <span class="type-badge" id="detailType"></span>
+      <span id="detailTitle" style="font-weight:600;font-size:15px;flex:1"></span>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+    <div class="detail-actions" id="detailActions"></div>
+  </div>
+</div>
+
+<!-- ── Auth Modal ── -->
+<div class="modal-overlay" id="authModal" style="display:none">
+  <div class="modal">
+    <h2 id="authTitle">Sign In</h2>
+    <div class="error" id="authError" style="display:none"></div>
+    <input id="authUsername" placeholder="Username">
+    <input id="authEmail" placeholder="Email" style="display:none">
+    <input id="authPassword" placeholder="Password" type="password">
+    <button class="btn btn-primary" onclick="submitAuth()"><span id="authBtnText">Sign In</span></button>
+    <div class="switch-link">
+      <span id="authSwitch"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Create Item Modal ── -->
+<div class="modal-overlay" id="createModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal create-modal" style="width:440px">
+    <h2 id="createTitle">New Work Item</h2>
+    <div class="error" id="createError" style="display:none"></div>
+    <select id="createType">
+      <option value="bug">Bug</option>
+      <option value="task">Task</option>
+      <option value="testcase">Test Case</option>
+    </select>
+    <select id="createArea"></select>
+    <input id="createItemTitle" placeholder="Title">
+    <select id="createPriority">
+      <option value="P0">P0 — Critical</option>
+      <option value="P1">P1 — High</option>
+      <option value="P2" selected>P2 — Medium</option>
+      <option value="P3">P3 — Low</option>
+    </select>
+    <textarea id="createSpec" placeholder="Spec / Description (markdown)"></textarea>
+    <button class="btn btn-primary" onclick="submitCreateItem()">Create</button>
+  </div>
+</div>
+
+<!-- ── Create Epic Modal ── -->
+<div class="modal-overlay" id="epicModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal create-modal">
+    <h2>New Project (Epic)</h2>
+    <div class="error" id="epicError" style="display:none"></div>
+    <input id="epicName" placeholder="Project name">
+    <textarea id="epicDesc" placeholder="Description" style="min-height:60px"></textarea>
+    <button class="btn btn-primary" onclick="submitCreateEpic()">Create</button>
+  </div>
+</div>
+
+<!-- ── Create Area Modal ── -->
+<div class="modal-overlay" id="areaModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal create-modal">
+    <h2>New Area (User Story)</h2>
+    <div class="error" id="areaError" style="display:none"></div>
+    <select id="areaEpic"></select>
+    <input id="areaName" placeholder="Area name">
+    <textarea id="areaDesc" placeholder="Description" style="min-height:60px"></textarea>
+    <select id="areaPriority">
+      <option value="P0">P0 — Critical</option>
+      <option value="P1">P1 — High</option>
+      <option value="P2" selected>P2 — Medium</option>
+      <option value="P3">P3 — Low</option>
+    </select>
+    <button class="btn btn-primary" onclick="submitCreateArea()">Create</button>
+  </div>
+</div>
+
 <script>
-const c=document.querySelector('.particles');
-for(let i=0;i<30;i++){const p=document.createElement('div');p.className='particle';p.style.left=Math.random()*100+'%';p.style.animationDuration=(4+Math.random()*6)+'s';p.style.animationDelay=Math.random()*6+'s';p.style.width=p.style.height=(1+Math.random()*3)+'px';c.appendChild(p)}
+// ── State ──
+let currentUser = null;
+let allEpics = [];
+let allAreas = [];
+let boardItems = [];
+let selectedEpicId = '';
+let selectedAreaId = '';
+let authMode = 'login'; // or 'register'
+
+// ── API helper ──
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ── Init ──
+async function init() {
+  await checkAuth();
+  await loadBoard();
+}
+
+async function checkAuth() {
+  try {
+    const data = await api('/api/me');
+    if (data && data.user) {
+      currentUser = data.user;
+      document.getElementById('userDisplay').textContent = currentUser.Username || currentUser.DisplayName;
+      document.getElementById('userAvatar').textContent = (currentUser.Username || '?')[0].toUpperCase();
+      document.getElementById('authLabel').textContent = 'Sign Out';
+    } else {
+      currentUser = null;
+      document.getElementById('userDisplay').textContent = '';
+      document.getElementById('userAvatar').textContent = '?';
+      document.getElementById('authLabel').textContent = 'Sign In';
+    }
+  } catch (e) {
+    currentUser = null;
+  }
+}
+
+async function loadBoard() {
+  const params = selectedEpicId ? `?epicId=${selectedEpicId}` : '';
+  const data = await api(`/api/board${params}`);
+  if (!data) return;
+  boardItems = data.items || [];
+  allAreas = data.areas || [];
+  allEpics = data.epics || [];
+  renderEpics();
+  renderAreaFilters();
+  renderBoard();
+  updateTriageBadge();
+}
+
+// ── Render Epics ──
+function renderEpics() {
+  const sel = document.getElementById('epicSelect');
+  sel.innerHTML = '<option value="">All Projects</option>';
+  allEpics.forEach(e => {
+    sel.innerHTML += `<option value="${e.Id}" ${e.Id === selectedEpicId ? 'selected' : ''}>${e.Name}</option>`;
+  });
+
+  const list = document.getElementById('epicList');
+  list.innerHTML = '';
+  allEpics.forEach(e => {
+    list.innerHTML += `<div class="epic-item ${String(e.Id) === selectedEpicId ? 'active' : ''}" onclick="switchEpic('${e.Id}')">📁 ${esc(e.Name)}</div>`;
+  });
+}
+
+function switchEpic(id) {
+  selectedEpicId = id;
+  selectedAreaId = '';
+  loadBoard();
+}
+
+// ── Render Area Filters ──
+function renderAreaFilters() {
+  const container = document.getElementById('areaFilters');
+  container.innerHTML = `<div class="area-pill ${!selectedAreaId ? 'active' : ''}" onclick="filterArea('')">All</div>`;
+  allAreas.forEach(a => {
+    container.innerHTML += `<div class="area-pill ${String(a.Id) === selectedAreaId ? 'active' : ''}" onclick="filterArea('${a.Id}')">${esc(a.Name)}</div>`;
+  });
+  // Add area button
+  container.innerHTML += `<div class="area-pill" onclick="showCreateArea()" style="border-style:dashed;color:var(--text-muted)">+ Area</div>`;
+}
+
+function filterArea(id) {
+  selectedAreaId = id;
+  renderAreaFilters();
+  renderBoard();
+}
+
+// ── Render Board ──
+function renderBoard() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const columns = { draft:[], triaged:[], 'ai-in-progress':[], 'ai-done':[], closed:[] };
+
+  // Map testcase pass/fail to closed column, blocked to ai-in-progress
+  boardItems.forEach(item => {
+    const status = item.Status || 'draft';
+    if (selectedAreaId && String(item.AreaId) !== selectedAreaId) return;
+    if (search && !(item.Title || '').toLowerCase().includes(search)) return;
+
+    let col = status;
+    if (status === 'pass' || status === 'fail') col = 'closed';
+    if (status === 'blocked') col = 'ai-in-progress';
+    if (!columns[col]) col = 'draft';
+
+    columns[col].push(item);
+  });
+
+  Object.keys(columns).forEach(col => {
+    document.getElementById(`count-${col}`).textContent = columns[col].length;
+    const body = document.getElementById(`body-${col}`);
+    if (columns[col].length === 0) {
+      body.innerHTML = '<div class="empty">No items</div>';
+      return;
+    }
+    body.innerHTML = columns[col].map(item => {
+      const type = item._type || 'task';
+      const isBlocked = item.Status === 'blocked';
+      const isWorking = item.Status === 'ai-in-progress';
+      const area = allAreas.find(a => String(a.Id) === String(item.AreaId));
+      return `
+        <div class="card type-${type} ${isBlocked ? 'blocked' : ''}" onclick="openDetail('${item.Id}','${type}')">
+          <div class="card-top">
+            <span class="type-badge ${type}">${type === 'testcase' ? 'test' : type}</span>
+            <span class="priority ${item.Priority || 'P2'}">${item.Priority || 'P2'}</span>
+          </div>
+          <div class="card-title">${esc(item.Title)}</div>
+          <div class="card-footer">
+            ${area ? `<span class="area-tag">${esc(area.Name)}</span>` : ''}
+            ${isWorking ? '<span class="agent-status"><span class="agent-dot"></span>claude</span>' : ''}
+            ${isBlocked ? '<span style="color:var(--danger);font-weight:500;margin-left:auto">BLOCKED</span>' : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  });
+}
+
+function updateTriageBadge() {
+  const draftCount = boardItems.filter(i => i.Status === 'draft').length;
+  const badge = document.getElementById('triageBadge');
+  if (draftCount > 0) {
+    badge.style.display = '';
+    badge.textContent = draftCount;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── Detail Panel ──
+function openDetail(id, type) {
+  const item = boardItems.find(i => String(i.Id) === id && i._type === type);
+  if (!item) return;
+
+  document.getElementById('detailType').className = `type-badge ${type}`;
+  document.getElementById('detailType').textContent = type === 'testcase' ? 'test' : type;
+  document.getElementById('detailTitle').textContent = item.Title;
+
+  const area = allAreas.find(a => String(a.Id) === String(item.AreaId));
+  const statusClass = `status-${(item.Status || 'draft').replace(/\s+/g, '-')}`;
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="field">
+      <div class="field-label">Status</div>
+      <div class="field-value"><span class="status-pill ${statusClass}">${item.Status || 'draft'}</span></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Priority</div>
+      <div class="field-value"><span class="priority ${item.Priority || 'P2'}" style="font-size:13px">${item.Priority || 'P2'}</span></div>
+    </div>
+    <div class="field">
+      <div class="field-label">Area</div>
+      <div class="field-value">${area ? esc(area.Name) : '—'}</div>
+    </div>
+    ${item.AssignedTo ? `<div class="field"><div class="field-label">Assigned To</div><div class="field-value">${esc(item.AssignedTo)}</div></div>` : ''}
+    <div class="field">
+      <div class="field-label">Created</div>
+      <div class="field-value">${item.CreatedAt ? new Date(item.CreatedAt).toLocaleDateString() : '—'}</div>
+    </div>
+    ${item.Spec ? `<div class="field"><div class="field-label">Spec</div><div class="field-value mono">${esc(item.Spec)}</div></div>` : ''}
+    ${item.Resolution ? `<div class="field"><div class="field-label">Resolution</div><div class="field-value mono">${esc(item.Resolution)}</div></div>` : ''}
+    ${item.LastResult ? `<div class="field"><div class="field-label">Last Result</div><div class="field-value mono">${esc(item.LastResult)}</div></div>` : ''}
+  `;
+
+  // Actions
+  const actions = document.getElementById('detailActions');
+  actions.innerHTML = '';
+  if (currentUser) {
+    if (item.Status === 'draft') {
+      actions.innerHTML = `<button class="btn btn-primary" onclick="triageItem('${item.Id}','${type}')">Triage</button>`;
+    }
+    if (item.Status === 'ai-done') {
+      actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','closed')">Close</button>`;
+    }
+    if (item.Status === 'blocked') {
+      actions.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('${item.Id}','${type}','triaged')">Unblock → Triaged</button>`;
+    }
+  }
+
+  document.getElementById('detailOverlay').classList.add('open');
+
+  // Load audit
+  loadAudit(type, id);
+}
+
+async function loadAudit(type, id) {
+  const typeName = type === 'bug' ? 'Bug' : type === 'task' ? 'Task' : 'TestCase';
+  const data = await api(`/api/audit?type=${typeName}&id=${id}&limit=20`);
+  if (data && data.log && data.log.length) {
+    const auditHtml = data.log.map(e => `
+      <div class="audit-entry">
+        <span class="audit-time">${new Date(e.CreatedAt).toLocaleString()}</span>
+        <span class="audit-actor">${esc(e.Actor)}</span>
+        <span>${esc(e.Action)}</span>
+      </div>
+    `).join('');
+    document.getElementById('detailBody').innerHTML += `
+      <div class="field" style="margin-top:16px">
+        <div class="field-label">Audit Trail</div>
+        ${auditHtml}
+      </div>
+    `;
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+
+// ── Status Changes ──
+async function triageItem(id, type) {
+  await api(`/api/triage/${id}`, { method: 'POST', body: { type } });
+  closeDetail();
+  await loadBoard();
+}
+
+async function updateStatus(id, type, newStatus) {
+  const table = type === 'bug' ? 'bugs' : type === 'task' ? 'tasks' : 'testcases';
+  await api(`/api/${table}/${id}`, { method: 'PUT', body: { status: newStatus } });
+  closeDetail();
+  await loadBoard();
+}
+
+// ── Auth ──
+function toggleAuth() {
+  if (currentUser) {
+    api('/api/logout', { method: 'POST' }).then(() => {
+      currentUser = null;
+      checkAuth();
+    });
+    return;
+  }
+  authMode = 'login';
+  showAuthModal();
+}
+
+function showAuthModal() {
+  document.getElementById('authModal').style.display = '';
+  document.getElementById('authError').style.display = 'none';
+  document.getElementById('authUsername').value = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authEmail').value = '';
+  if (authMode === 'login') {
+    document.getElementById('authTitle').textContent = 'Sign In';
+    document.getElementById('authBtnText').textContent = 'Sign In';
+    document.getElementById('authEmail').style.display = 'none';
+    document.getElementById('authSwitch').innerHTML = 'No account? <a onclick="authMode=\'register\';showAuthModal()">Register</a>';
+  } else {
+    document.getElementById('authTitle').textContent = 'Register';
+    document.getElementById('authBtnText').textContent = 'Create Account';
+    document.getElementById('authEmail').style.display = '';
+    document.getElementById('authSwitch').innerHTML = 'Have an account? <a onclick="authMode=\'login\';showAuthModal()">Sign In</a>';
+  }
+}
+
+async function submitAuth() {
+  const username = document.getElementById('authUsername').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if (!username || !password) { showAuthError('Fill in all fields'); return; }
+
+  const url = authMode === 'login' ? '/api/login' : '/api/register';
+  const body = { username, password };
+  if (authMode === 'register') body.email = document.getElementById('authEmail').value.trim();
+
+  const data = await api(url, { method: 'POST', body });
+  if (data && data.ok) {
+    document.getElementById('authModal').style.display = 'none';
+    await checkAuth();
+    await loadBoard();
+  } else {
+    showAuthError(data?.error || 'Failed');
+  }
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = '';
+}
+
+// ── Create Item ──
+function showCreateItem() {
+  if (!currentUser) { toggleAuth(); return; }
+  document.getElementById('createModal').style.display = '';
+  document.getElementById('createError').style.display = 'none';
+  document.getElementById('createItemTitle').value = '';
+  document.getElementById('createSpec').value = '';
+  const sel = document.getElementById('createArea');
+  sel.innerHTML = '';
+  allAreas.forEach(a => {
+    sel.innerHTML += `<option value="${a.Id}">${esc(a.Name)}</option>`;
+  });
+  if (!allAreas.length) sel.innerHTML = '<option value="">No areas — create one first</option>';
+}
+
+async function submitCreateItem() {
+  const areaId = document.getElementById('createArea').value;
+  if (!areaId) { document.getElementById('createError').textContent = 'Create an area first'; document.getElementById('createError').style.display = ''; return; }
+  const type = document.getElementById('createType').value;
+  const title = document.getElementById('createItemTitle').value.trim();
+  if (!title) { document.getElementById('createError').textContent = 'Title required'; document.getElementById('createError').style.display = ''; return; }
+  const priority = document.getElementById('createPriority').value;
+  const spec = document.getElementById('createSpec').value;
+
+  const table = type === 'bug' ? 'bugs' : type === 'task' ? 'tasks' : 'testcases';
+  const data = await api(`/api/areas/${areaId}/${table}`, { method: 'POST', body: { title, spec, priority } });
+  if (data && data.item) {
+    document.getElementById('createModal').style.display = 'none';
+    await loadBoard();
+  } else {
+    document.getElementById('createError').textContent = data?.error || 'Failed';
+    document.getElementById('createError').style.display = '';
+  }
+}
+
+// ── Create Epic ──
+function showCreateEpic() {
+  if (!currentUser) { toggleAuth(); return; }
+  document.getElementById('epicModal').style.display = '';
+  document.getElementById('epicError').style.display = 'none';
+  document.getElementById('epicName').value = '';
+  document.getElementById('epicDesc').value = '';
+}
+
+async function submitCreateEpic() {
+  const name = document.getElementById('epicName').value.trim();
+  if (!name) { document.getElementById('epicError').textContent = 'Name required'; document.getElementById('epicError').style.display = ''; return; }
+  const description = document.getElementById('epicDesc').value;
+  const data = await api('/api/epics', { method: 'POST', body: { name, description } });
+  if (data && data.epic) {
+    document.getElementById('epicModal').style.display = 'none';
+    selectedEpicId = String(data.epic.Id);
+    await loadBoard();
+  } else {
+    document.getElementById('epicError').textContent = data?.error || 'Failed';
+    document.getElementById('epicError').style.display = '';
+  }
+}
+
+// ── Create Area ──
+function showCreateArea() {
+  if (!currentUser) { toggleAuth(); return; }
+  if (!allEpics.length) { alert('Create a project first'); return; }
+  document.getElementById('areaModal').style.display = '';
+  document.getElementById('areaError').style.display = 'none';
+  document.getElementById('areaName').value = '';
+  document.getElementById('areaDesc').value = '';
+  const sel = document.getElementById('areaEpic');
+  sel.innerHTML = '';
+  allEpics.forEach(e => {
+    sel.innerHTML += `<option value="${e.Id}" ${String(e.Id) === selectedEpicId ? 'selected' : ''}>${esc(e.Name)}</option>`;
+  });
+}
+
+async function submitCreateArea() {
+  const epicId = document.getElementById('areaEpic').value;
+  const name = document.getElementById('areaName').value.trim();
+  if (!name) { document.getElementById('areaError').textContent = 'Name required'; document.getElementById('areaError').style.display = ''; return; }
+  const description = document.getElementById('areaDesc').value;
+  const priority = document.getElementById('areaPriority').value;
+  const data = await api(`/api/epics/${epicId}/areas`, { method: 'POST', body: { name, description, priority } });
+  if (data && data.area) {
+    document.getElementById('areaModal').style.display = 'none';
+    await loadBoard();
+  } else {
+    document.getElementById('areaError').textContent = data?.error || 'Failed';
+    document.getElementById('areaError').style.display = '';
+  }
+}
+
+// ── View Switching ──
+function switchView(view) {
+  document.querySelectorAll('.nav-item[data-view]').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
+  // For MVP, board is the only real view. Triage just filters to draft items.
+  if (view === 'triage') {
+    document.getElementById('searchInput').value = '';
+    // Show only draft items by temporarily filtering
+    renderBoard();
+  }
+}
+
+// ── Helpers ──
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Boot ──
+init();
 </script>
 </body>
 </html>

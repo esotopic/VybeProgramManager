@@ -1,7 +1,12 @@
 {
-  "name": "vybe-program-manager",
+  "name": "vybe-pm",
   "version": "1.0.0",
-  "description": "Vybe Program Manager - A 1000Problems project",
+  "description": "Vybe Program Manager — AI-driven project management",
   "main": "server.js",
-  "scripts": { "start": "node server.js" }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "mssql": "^11.0.1"
+  }
 }
